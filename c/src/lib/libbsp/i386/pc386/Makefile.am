@@ -103,10 +103,14 @@ libbsp_a_SOURCES += console/printk_support.c
 libbsp_a_SOURCES += console/vgacons.c
 libbsp_a_SOURCES += console/exar17d15x.c
 libbsp_a_SOURCES += console/rtd316.c
+if USE_VBE_PMI
+libbsp_a_SOURCES += console/fb_vesa.c
+else
 if USE_CIRRUS_GD5446
 libbsp_a_SOURCES += console/fb_cirrus.c
 else
 libbsp_a_SOURCES += console/fb_vga.c
+endif
 endif
 
 # gdb

@@ -82,6 +82,11 @@ RTEMS_BSPOPTS_HELP([USE_CIRRUS_GD5446],
  NOTE: This has only been tested on Qemu.])
 AM_CONDITIONAL(USE_CIRRUS_GD5446,test "$USE_CIRRUS_GD5446" = "1")
 
+RTEMS_BSPOPTS_SET([USE_VBE_PMI],[*],[0])
+RTEMS_BSPOPTS_HELP([USE_VBE_PMI],
+[If defined, enables use of the Vesa Bios Extensions Protected Mode Interface])
+AM_CONDITIONAL(USE_VBE_PMI,test "$USE_VBE_PMI" = "1")
+
 if test X${CLOCK_DRIVER_USE_TSC} = X1 -a X${CLOCK_DRIVER_USE_8254} = X1 ; then
   AC_MSG_ERROR([pc386 both TSC and 8254 specified for clock driver])
 fi
