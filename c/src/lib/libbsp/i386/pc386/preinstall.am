@@ -139,6 +139,13 @@ $(PROJECT_INCLUDE)/i386_io.h: ../../i386/shared/comm/i386_io.h $(PROJECT_INCLUDE
 	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/i386_io.h
 PREINSTALL_FILES += $(PROJECT_INCLUDE)/i386_io.h
 
+if USE_VBE_PMI
+$(PROJECT_INCLUDE)/vbe3.h: include/vbe3.h $(PROJECT_INCLUDE)/$(dirstamp)
+	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/vbe3.h
+PREINSTALL_FILES += $(PROJECT_INCLUDE)/vbe3.h
+
+else
+endif
 $(PROJECT_INCLUDE)/pcibios.h: ../../i386/shared/pci/pcibios.h $(PROJECT_INCLUDE)/$(dirstamp)
 	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/pcibios.h
 PREINSTALL_FILES += $(PROJECT_INCLUDE)/pcibios.h
