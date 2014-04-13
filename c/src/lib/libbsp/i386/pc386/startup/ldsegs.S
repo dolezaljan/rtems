@@ -34,6 +34,15 @@
 +--------------------------------------------------------------------------*/
 
 #include <rtems/asm.h>
+#include <bsp.h> /* contains sizes of GDT and IDT */
+
+#ifndef GDT_SIZE
+#define GDT_SIZE (3)
+#endif
+
+#ifndef IDT_SIZE
+#define IDT_SIZE (256)
+#endif
 
 /*----------------------------------------------------------------------------+
 | CODE section
@@ -167,6 +176,9 @@ next_step:
 /*---------------------------------------------------------------------------+
 | GDT itself
 +--------------------------------------------------------------------------*/
+#if GDT_SIZE < 3
+#error "GDT_SIZE must be at least 3"
+#endif
 
 BEGIN_DATA
 	.p2align 4
@@ -186,11 +198,16 @@ SYM (_Global_descriptor_table):
 	.word 0xffff, 0
 	.byte 0, 0x92, 0xcf, 0
 
+        /* allocated space for user segments */
+        .rept (GDT_SIZE - 3)
+        .word 0,0,0,0
+        .endr
+
 /*---------------------------------------------------------------------------+
 | Descriptor of GDT
 +--------------------------------------------------------------------------*/
 SYM (gdtdesc):
-	.word (3*8 - 1)
+	.word (GDT_SIZE*8 - 1)
 	.long SYM (_Global_descriptor_table)
 
 /*---------------------------------------------------------------------------+
@@ -200,7 +217,7 @@ SYM (gdtdesc):
 
 	PUBLIC(Interrupt_descriptor_table)
 SYM(Interrupt_descriptor_table):
-	.rept 256
+	.rept IDT_SIZE
 	.word 0,0,0,0
 	.endr
 
@@ -211,7 +228,7 @@ SYM(Interrupt_descriptor_table):
 	.p2align 4
 	PUBLIC(IDT_Descriptor)
 SYM(IDT_Descriptor):
-	.word  (256*8 - 1)
+	.word  (IDT_SIZE*8 - 1)
 	.long  SYM (Interrupt_descriptor_table)
 
 END_DATA
