@@ -284,3 +284,96 @@ int i386_set_gdt_entry (unsigned short segment_selector, unsigned base,
 
     return 1;
 }
+
+int i386_put_gdt_entry (unsigned short segment_selector, unsigned base,
+			unsigned limit, segment_descriptors* sd_flags)
+{
+    unsigned 			gdt_limit;
+    unsigned short              tmp_segment = 0;
+    unsigned int                limit_adjusted;
+    segment_descriptors* 	gdt_entry_tbl;
+
+    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
+
+    if ( segment_selector >= (gdt_limit+1)/8 ) {
+      return 0;
+    }
+    /*
+     * set up limit
+     */
+    limit_adjusted = limit;
+    if ( limit > 4095 ) {
+      sd_flags->granularity = 1;
+      limit_adjusted /= 4096;
+    }
+    else
+    {
+      sd_flags->granularity = 0;
+    }
+    sd_flags->limit_15_0  = limit_adjusted & 0xffff;
+    sd_flags->limit_19_16 = (limit_adjusted >> 16) & 0xf;
+    /*
+     * set up base
+     */
+    sd_flags->base_address_15_0  = base & 0xffff;
+    sd_flags->base_address_23_16 = (base >> 16) & 0xff;
+    sd_flags->base_address_31_24 = (base >> 24) & 0xff;
+
+    if ( segment_selector != 0 )
+    {
+        /* put prepared descriptor into the GDT */
+        gdt_entry_tbl[segment_selector] = *sd_flags;
+      /*
+       * Now, reload all segment registers so the possible changes takes effect.
+       */
+      __asm__ volatile( "movw %%ds,%0 ; movw %0,%%ds\n\t"
+                    "movw %%es,%0 ; movw %0,%%es\n\t"
+                    "movw %%fs,%0 ; movw %0,%%fs\n\t"
+                    "movw %%gs,%0 ; movw %0,%%gs\n\t"
+                    "movw %%ss,%0 ; movw %0,%%ss"
+                     : "=r" (tmp_segment)
+                     : "0"  (tmp_segment)
+                   );
+        return 1;
+    }
+
+    return 3;
+}
+
+int i386_free_gdt_entry (unsigned short segment_selector)
+{
+    unsigned 			gdt_limit;
+    unsigned short              tmp_segment = 0;
+    unsigned int*               clear_tmp;
+    segment_descriptors* 	gdt_entry_tbl;
+
+    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
+
+    if ( segment_selector >= (gdt_limit+1)/8 || segment_selector == 0 ) {
+      return 1;
+    }
+
+    /* ToDo: check if selector is in use */
+
+    /* mark as free by setting all bits to 0 */
+    clear_tmp = (unsigned int*) &gdt_entry_tbl[segment_selector];
+    *clear_tmp = 0;
+    *(clear_tmp+1) = 0;
+
+    return 0;
+}
+
+unsigned short i386_find_empty_gdt_entry ()
+{
+    unsigned 			gdt_limit;
+    unsigned short              segment_selector;
+    unsigned int*               empty_tmp;
+    segment_descriptors* 	gdt_entry_tbl;
+
+    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
+    for(segment_selector = 1;segment_selector<=gdt_limit;segment_selector++){
+        empty_tmp = (unsigned int*) &gdt_entry_tbl[segment_selector];
+        if(*empty_tmp == 0 && *(empty_tmp+1) == 0)return segment_selector;
+    }
+    return 0;
+}

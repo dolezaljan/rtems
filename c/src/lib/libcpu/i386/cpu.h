@@ -275,6 +275,46 @@ extern void i386_set_GDTR (segment_descriptors*,
 extern int i386_set_gdt_entry (unsigned short segment_selector, unsigned base,
 					     unsigned limit);
 
+/** 
+ * C callable function:
+ * Sets up one descriptor with predefined flags in @sd_flags. @base and @limit
+ * will be parsed into @sd_flags. This descriptor will replace original
+ * descriptor in GDT on @segment_selector position, unless @segment_selector==0,
+ * if so, only @base and @limit are filled into @sd_flags. Granularity flag is
+ * modified depending on the specified limit.
+ * 
+ * @return  0 FAILED out of GDT range 
+ *          1 SUCCESS @sd_flags filled and descriptor put in GDT 
+ *          3 SUCCESS @sd_flags filled 
+ * @param segment_selector 
+ * @param base 
+ * @param limit 
+ */ 
+extern int i386_put_gdt_entry(unsigned short segment_selector,unsigned int base, 
+                              unsigned int limit,segment_descriptors* sd_flags); 
+
+/**
+ * C callable function clearing descriptor in GDT for further use.
+ * Freeing here means putting zeros to the descriptor on @segment_selector
+ * position.
+ * 
+ * @param segment_selector index to GDT telling which descriptor to remove
+ * @return  0 SUCCESS
+ *          1 FAILED out of GDT range or @segment_selector == 0
+ *          2 FAILED @segment_selector in use
+ */
+extern int i386_free_gdt_entry (unsigned short segment_selector);
+
+/**
+ * C callable function finds empty descriptor in GDT.
+ * Descriptor is considered empty if it is filled with zeros.
+ *
+ * @return  0 FAILED no empty descriptor
+ *          <1;65535> segment_selector number as index to GDT
+ */
+extern unsigned short i386_find_empty_gdt_entry ();
+
+
 /*
  * See page 11.18 Figure 11-12.
  *
