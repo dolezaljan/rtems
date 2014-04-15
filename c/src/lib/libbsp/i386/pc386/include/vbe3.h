@@ -24,8 +24,6 @@
 #ifndef _VBE_H
 #define _VBE_H
 
-#define NUM_OF_VBE_DESCRIPTORS       8
-
 #ifndef ASM /* ASM */
 
 #include <stdint.h>
@@ -337,3 +335,4 @@ struct VBE_SupVbeInfoBlock {
 #endif /* ASM */
 
 #endif /* _VBE_H */
+

@@ -53,7 +53,9 @@
 extern "C" {
 #endif
 
+#endif /* ASM - 1. */
 #include <bspopts.h>
+#ifndef ASM /* ASM - 2.*/
 #include <bsp/default-initial-extension.h>
 
 #include <rtems.h>
@@ -169,15 +171,14 @@ extern int rtems_3c509_driver_attach(struct rtems_bsdnet_ifconfig *config);
 #define US_TO_TICK(us) (((us)*105+44)/88)
 #define TICK_TO_US(tk) (((tk)*88+52)/105)
 
-#endif /* ASM - 1.*/
-#include <vbe3.h>
+#endif /* ASM - 2.*/
 /*-------------------------------------------------------------------------+
 | External Variables.
 +--------------------------------------------------------------------------*/
 #define IDT_SIZE (256)
-#define GDT_SIZE (3  + NUM_OF_VBE_DESCRIPTORS)
+#define GDT_SIZE (3 + NUM_APP_DRV_GDT_DESCRIPTORS)
 
-#ifndef ASM /* ASM - 2.*/
+#ifndef ASM /* ASM - 3.*/
 
 extern interrupt_gate_descriptor Interrupt_descriptor_table[IDT_SIZE];
 extern segment_descriptors _Global_descriptor_table   [GDT_SIZE];
@@ -229,6 +230,6 @@ void breakpoint(void);
 }
 #endif
 
-#endif /* ASM - 2.*/
+#endif /* ASM - 3.*/
 
 #endif /* _BSP_H */

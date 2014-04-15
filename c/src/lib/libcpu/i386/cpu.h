@@ -286,9 +286,10 @@ extern int i386_set_gdt_entry (unsigned short segment_selector, unsigned base,
  * @return  0 FAILED out of GDT range 
  *          1 SUCCESS @sd_flags filled and descriptor put in GDT 
  *          3 SUCCESS @sd_flags filled 
- * @param segment_selector 
- * @param base 
- * @param limit 
+ * @param segment_selector index to GDT table, where new descriptor will be stored
+ * @param base base address of new segment
+ * @param limit number of limit bytes of new segment (granularity bit will be set if needed)
+ * @param sd_flags @limit and @base will be filled in and alogn with prepared flags, this will be copied into GDT at @segment_selector index
  */ 
 extern int i386_put_gdt_entry(unsigned short segment_selector,unsigned int base, 
                               unsigned int limit,segment_descriptors* sd_flags); 
