@@ -301,14 +301,11 @@ int i386_put_gdt_entry (unsigned short segment_selector, unsigned base,
     /*
      * set up limit
      */
+    sd_flags->granularity = 0;
     limit_adjusted = limit;
-    if ( limit > 4095 ) {
+    if ( limit > 65535 ) {
       sd_flags->granularity = 1;
       limit_adjusted /= 4096;
-    }
-    else
-    {
-      sd_flags->granularity = 0;
     }
     sd_flags->limit_15_0  = limit_adjusted & 0xffff;
     sd_flags->limit_19_16 = (limit_adjusted >> 16) & 0xf;
@@ -376,4 +373,42 @@ unsigned short i386_find_empty_gdt_entry ()
         if(*empty_tmp == 0 && *(empty_tmp+1) == 0)return segment_selector;
     }
     return 0;
+}
+
+unsigned short i386_cpy_gdt_entry(unsigned short segment_selector, segment_descriptors* strucToFill)
+{
+    unsigned 			gdt_limit;
+    segment_descriptors* 	gdt_entry_tbl;
+
+    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
+
+    if ( segment_selector >= (gdt_limit+1)/8 ) {
+      return 0;
+    }
+    
+    *strucToFill = gdt_entry_tbl[segment_selector];
+    return segment_selector;
+}
+
+segment_descriptors* i386_get_gdt_entry(unsigned short segment_selector)
+{
+    unsigned                    gdt_limit;
+    segment_descriptors* 	gdt_entry_tbl;
+
+    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
+
+    if ( segment_selector >= (gdt_limit+1)/8 ) {
+      return 0;
+    }
+    
+    return &gdt_entry_tbl[segment_selector];
+}
+
+unsigned i386_limit_gdt_entry(segment_descriptors* gdt_entry)
+{
+    unsigned lim = (gdt_entry->limit_15_0 + (gdt_entry->limit_19_16<<16));
+    if(gdt_entry->granularity){
+        return lim*4096+4095;
+    }
+    return lim;
 }

@@ -315,6 +315,42 @@ extern int i386_free_gdt_entry (unsigned short segment_selector);
  */
 extern unsigned short i386_find_empty_gdt_entry ();
 
+/**
+ * Copies GDT entry at index @segment_selector to position given by @strucToFill
+ *
+ * @param   segment_selector index to GDT table for specifying descriptor to copy
+ * @return  0 FAILED segment_selector out of GDT range
+ *          <1;65535> retrieved segment_selector
+ */
+extern unsigned short i386_cpy_gdt_entry(unsigned short segment_selector, segment_descriptors* strucToFill);
+
+/**
+ * Returns pointer to GDT table at index given by @segment_selector
+ *
+ * @param   segment_selector index to GDT table for specifying descriptor to get
+ * @return  NULL FAILED segment_selector out of GDT range
+ *          pointer to GDT table at @segment_selector
+ */
+extern segment_descriptors* i386_get_gdt_entry(unsigned short segment_selector);
+
+/**
+ * Extracts base address from GDT entry pointed to by @gdt_entry
+ *
+ * @param  gdt_entry pointer to entry from which base should be retrieved
+ * @return base address from GDT entry
+*/
+extern inline void* i386_base_gdt_entry(segment_descriptors* gdt_entry)
+{
+    return (void*)(gdt_entry->base_address_15_0 + (gdt_entry->base_address_23_16<<16) + (gdt_entry->base_address_31_24<<24));
+}
+
+/**
+ * Extracts limit in bytes from GDT entry pointed to by @gdt_entry
+ *
+ * @param  gdt_entry pointer to entry from which limit should be retrieved
+ * @return limit value in bytes from GDT entry
+ */
+extern unsigned i386_limit_gdt_entry(segment_descriptors* gdt_entry);
 
 /*
  * See page 11.18 Figure 11-12.
