@@ -430,7 +430,6 @@ frame_buffer_initialize(
 //        return RTEMS_UNSATISFIED;
 //    }
 
-    //extern int _CPU_map_phys_address(void **mappedAddress, void *physAddress, int size, int flag);
 //    if(_CPU_map_phys_address(&biosStart_mapped, GRBIOS_HW_ADDR, GRBIOS_SIZE, 0x0)) /* flag 0x10 turns off caching */
 //    {
 //        printk(FB_VESA_NAME ": error mapping graphical BIOS to virtual memory\n");
@@ -438,7 +437,6 @@ frame_buffer_initialize(
 //    }
     biosStart_mapped = GRBIOS_HW_ADDR;
 
-    //extern void *memcpy (void *__restrict __dest, const void *__restrict __src, size_t __n) __THROW __nonnull ((1, 2));
     memcpy((void*)vbe_grbios_img, biosStart_mapped, GRBIOS_SIZE-1);
 //    if(_CPU_unmap_virt_address(biosStart_mapped, GRBIOS_SIZE))
 //    {
@@ -447,11 +445,11 @@ frame_buffer_initialize(
     biosStart_mapped = NULL;
 
     pmib = (struct VBE_PMInfoBlock*) findPMID((void*)vbe_grbios_img, GRBIOS_SIZE);
-//    if((void *)pmib == NULL)
-//    {
-//        printk("support for VBE3_PMI not found\n");
-//        return RTEMS_UNSATISFIED;
-//    }
+    if((void *)pmib == NULL)
+    {
+        printk("support for VBE3_PMI not found\n");
+        return RTEMS_UNSATISFIED;
+    }
 
     /* Filling PMInfoBlock struct */
 //    vbe_grbios_dataemul /* must be empty - filled with zeros */
@@ -569,48 +567,6 @@ frame_buffer_initialize(
                         SEG_16b_LEN-GRBIOS_STACK_LN-1,
                         &flags_desc);
 
-//    printk("0x%p\n",vid_mem_gr_map);
-//    printk("0x%p\n",vid_mem_txtb_map);
-//    printk("0x%p\n",vid_mem_txtc_map);
-//    printk("0x%x\n",*(uint32_t*)vid_mem_gr_map);
-//    printk("0x%x\n",*(uint32_t*)vid_mem_txtb_map);
-//    printk("0x%x\n",*(uint32_t*)vid_mem_txtc_map);
-
-    /* test direct writing to text buffer */
-//    int index;
-//    for(index=0;index<64;index++)
-//    {
-//        *((uint8_t*)VIDEO_MEM_TXT_C) = 0x41;
-//        *((uint8_t*)vid_mem_txtc_map+index) = 0x43;
-//    }
-
-//    /* print filled descriptors */
-//    unsigned                    gdt_limit;
-//    segment_descriptors*        gdt_entry_tbl;
-//    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
-
-//    for(segment_selector=0;segment_selector<(gdt_limit+1)/8;segment_selector++){
-//        printk("(%d)", segment_selector);
-//        printDesc(&gdt_entry_tbl[segment_selector]);
-//        BSP_wait_polled_input();
-//    }
-    
-//    flags_desc.type                = 0xA;      /* bits 4 */
-//    flags_desc.operation_size      = 0x1;
-//    used_segment_selectors.db_switch = i386_find_empty_gdt_entry();
-//    if(!used_segment_selectors.db_switch)
-//    {
-//        printk(FB_VESA_NAME " (db_switch): not enough free descriptors in GDT\n");
-//        goto _error;
-//    }
-//    uint32_t dbsw_base;
-//    __asm__ volatile ("\tmovl $bp_swt,%[base]" : [base] "=m" (dbsw_base)  );
-//    i386_put_gdt_entry (used_segment_selectors.db_switch, dbsw_base, 0xFFFFFFFF, &flags_desc);
-
-//    stack16 = (used_segment_selectors.stack << 3);
-//    uint16_t dbsw_cs = used_segment_selectors.db_switch << 3;
-//    uint32_t size_gr_bios_stack = sizeof(vbe_grbios_stack);
-    
     struct VBE_parameters params;
     struct VBE_return returns;
     params.vbe_cs    = used_segment_selectors.code      << 3;
@@ -620,113 +576,6 @@ frame_buffer_initialize(
     if(vbe_function_call(&params, &returns) == RTEMS_UNSATISFIED)
         return RTEMS_UNSATISFIED;
     printk( FB_VESA_NAME " vbe if returned - pminit\n");
-
-//    struct VBEPTR{
-//        uint16_t offset;
-//        uint16_t selector;
-//    } __attribute__((__packed__));
-//    struct VBEPTR vbe_c_st, *vbe_c_ptr;
-//    vbe_c_st.selector = used_segment_selectors.code << 3;
-//    vbe_c_st.offset = (pmib->PMInitialize);
-
-/*************testing*********************/
-//    uint32_t adrrr; // testing return from subsegment
-//    __asm__ volatile ("\tmovl $nlnreturn,%[add]" : [add] "=m" (adrrr) );
-//    vbe_c_st.offset = 0;
-//    flags_desc.operation_size = 0;
-//    i386_put_gdt_entry (used_segment_selectors.code, adrrr, GRBIOS_SIZE-1, &flags_desc);
-/*************end testing*********************/
-
-//    vbe_c_ptr = &vbe_c_st;
-//    BSP_wait_polled_input();
-//    /* in order to use local variables, FPO (frame pointer omission) must be disabled
-//     * (i don't see other option now)
-//     * local variables with FPO are accessed using offset from ESP, but instructions such as
-//     * push and pop changes ESP and local variable is not accessed correctly.
-//     * While not using FPO register such as EBP is used for accessing local variables.
-//     * To disable FPO, option like -fno-omit-frame-pointer should be passed to GCC */
-//    __asm__ __volatile__  (
-//                    "\t"
-//                    "pushw %%ds\n\t"
-//                    "pushw %%es\n\t"
-//                    "pushw %%fs\n\t"
-//                    "pushw %%gs\n\t"
-//                    "pushl %%ebp\n\t"
-//                    "pushfl\n\t"
-//
-//                    /* for return to plain 32-bit segment */
-//                    "pushl %%cs\n\t"
-//                    "pushl $end_vbe\n\t"
-//                    
-//                    /* backup current stack */ /* if local variables are used, this must be stored on the new stack */
-//                    "movw %%ss,%[ssb]\n\t"
-//                    "movl %%esp,%[espb]\n\t"
-//                    
-//                    /* for return to 32-bit segment with offset certainly less than 0xFFFF */
-//                    /* store return information to the end of graphical bios stack */
-//                    "movw %%ax,-2(%%ebx,%%esi)\n\t"
-//                    "movl $bp_swt,%%eax\n\t"
-//                    "subl %%ecx,%%eax\n\t"
-//                    "movw %%ax,-4(%%ebx,%%esi)\n\t"
-//
-//                    /* disable interrupts (must be disabled as long as segmentation registers are not held per task) */
-//                    "cli\n\t"
-//
-//                    /* clear direction */
-//                    "cld\n\t"
-//
-//                    /* load new stack - used for graphical bios */
-//                    "movw %[stack16],%%ss\n\t"
-//                    "movl $0xFFFC,%%esp\n\t" /* there is stack segment and offset prepared on the end of the stack for return */
-//
-//                    /* jump to the graphical bios code */
-//                    "data16 ljmp *(%%edi)\n\t"
-//
-//                    "bp_swt:\n\t"
-//                    "movw %[ssb],%%ss\n\t" /* if local variables are used, these must be restored from the current stack */
-//                    "movl %[espb],%%esp\n\t"
-//                    "lret\n"
-///*************testing*********************/
-////                    "nlnreturn:\n\t"
-////                    "addr16 lret\n"
-///*************end testing*********************/
-//
-//                    "end_vbe:\n"
-//                    /* enable interrupts */
-//                    "popfl\n\t"
-//                    "popl  %%ebp\n\t"
-//                    "popw  %%gs\n\t"
-//                    "popw  %%fs\n\t"
-//                    "popw  %%es\n\t"
-//                    "popw  %%ds\n\t"
-//                    : [ssb] "=m" (ss_backup), [espb] "=m" (esp_backup)
-//                    : "0" (ss_backup), "1" (esp_backup), [stack16] "m" (stack16), "D" (vbe_c_ptr), "a" (dbsw_cs), "c" (dbsw_base), "b" (vbe_grbios_stack), "S" (size_gr_bios_stack)
-//                    : "memory"
-//                );
-//
-//    BSP_wait_polled_input();
-
-//                    "addr16 call far %[vbeptr]"
-
-
-/* test output */
-//    segment_selector = used_segment_selectors.B8 << 3;
-//    uint32_t offs = 30;
-//    uint16_t val = 0x4146;
-//
-//    printk("%d",segment_selector>>3);
-//    printDesc(&gdt_entry_tbl[segment_selector>>3]);
-//
-//    /* test writing to text buffer using segmentation */
-//    __asm__ volatile  (
-//                    "push  %%gs\n"
-//                    "movw  %[sel],%%gs\n"
-//                    "movw  %[val],%%gs:(%[offs])\n"
-//                    "pop   %%gs\n"
-//                    : 
-//                    : [sel] "r" (segment_selector), [offs] "r" (offs), [val] "r" (val) 
-//                    : "memory"
-//                 );
 
     printk("end\n");
     BSP_wait_polled_input();
@@ -759,18 +608,7 @@ frame_buffer_open(
 
         return RTEMS_UNSATISFIED;
     }
-    /* parameters for inline asm - and for handover to graphical bios */
-//    struct {
-//        uint32_t call_eax;                      /* off 0  - function */
-//        uint32_t call_ebx;                      /* off 4  - subfunction/mode */
-//        uint32_t call_ecx;                      /* off 8  */
-//        uint32_t call_edx;                      /* off c  */
-//        uint32_t call_edi;                      /* off 10 - offset of tables/buffers */
-//        uint32_t call_esi;                      /* off 14 */
-//        uint16_t call_es;                       /* off 18 - segment of tables/buffers */
-//        uint16_t vbe_offset;                    /* off 1a */
-//        uint16_t vbe_cs;                        /* off 1c */
-//    } __attribute__((__packed__))
+
     struct VBE_parameters locals;
     struct VBE_return vberet;
 
@@ -782,7 +620,6 @@ frame_buffer_open(
 //    locals.call_ebx = VBE_R1280x1024C17M;
 //    locals.call_ebx |= VBE_linearFlatFrameBufMask;// | VBE_preserveDispMemMask;
     struct VBE_VbeInfoBlock vbeib;
-      //extern void *memcpy (void *__restrict __dest, const void *__restrict __src, size_t __n) __THROW __nonnull ((1, 2));
     char Signature[] = "VBE2";
     memcpy(&vbeib.VbeSignature, &Signature, 4);
     locals.call_es = prepareESdescriptor(&vbeib, sizeof(vbeib));
