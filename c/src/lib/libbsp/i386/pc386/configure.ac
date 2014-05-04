@@ -87,12 +87,12 @@ RTEMS_BSPOPTS_HELP([USE_VBE_PMI],
 [If defined, enables use of the Vesa Bios Extensions Protected Mode Interface])
 AM_CONDITIONAL(USE_VBE_PMI,test "$USE_VBE_PMI" = "1")
 
-# VBE PMI utilizes 8 descriptors in GDT
+# VBE PMI utilizes 8 descriptors in GDT + 1 for switching between 16- and 32-bit code
 if test "${USE_VBE_PMI}" = "1" ; then
   if test -z "${NUM_APP_DRV_GDT_DESCRIPTORS}"; then
-      NUM_APP_DRV_GDT_DESCRIPTORS=8 ;
-  elif test "${NUM_APP_DRV_GDT_DESCRIPTORS}" -lt "8" ; then
-      NUM_APP_DRV_GDT_DESCRIPTORS=8 ; 
+      NUM_APP_DRV_GDT_DESCRIPTORS=9 ;
+  elif test "${NUM_APP_DRV_GDT_DESCRIPTORS}" -lt "9" ; then
+      NUM_APP_DRV_GDT_DESCRIPTORS=9 ; 
   fi
 fi
 RTEMS_BSPOPTS_SET([NUM_APP_DRV_GDT_DESCRIPTORS],[*],[0])
