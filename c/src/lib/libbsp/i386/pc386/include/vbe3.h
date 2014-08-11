@@ -111,6 +111,11 @@ extern "C" {
 #define VBE_RetVBESupSpeInf    0x00  /* Return VBE Supplemental Specification Information */
 
 /* *** Structures *** */
+struct VBE_FarPtr {
+    uint16_t offset;
+    uint16_t selector;
+} __attribute__((__packed__)) ;
+
 struct VBE_PMInfoBlock {
     uint8_t   Signature[4];          /*  PM Info Block Signature */
     uint16_t  EntryPoint;            /*  Offset of PM entry point within BIOS */

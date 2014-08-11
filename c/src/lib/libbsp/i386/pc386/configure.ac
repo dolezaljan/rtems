@@ -82,22 +82,14 @@ RTEMS_BSPOPTS_HELP([USE_CIRRUS_GD5446],
  NOTE: This has only been tested on Qemu.])
 AM_CONDITIONAL(USE_CIRRUS_GD5446,test "$USE_CIRRUS_GD5446" = "1")
 
-RTEMS_BSPOPTS_SET([USE_VBE_PMI],[*],[0])
-RTEMS_BSPOPTS_HELP([USE_VBE_PMI],
-[If defined, enables use of the Vesa Bios Extensions Protected Mode Interface])
-AM_CONDITIONAL(USE_VBE_PMI,test "$USE_VBE_PMI" = "1")
+RTEMS_BSPOPTS_SET([USE_VESA],[*],[0])
+RTEMS_BSPOPTS_HELP([USE_VESA],
+[If defined, enables use of the Vesa Bios Extensions, which enables graphical mode and introduce it upon bootup.])
+AM_CONDITIONAL(USE_VESA,test "$USE_VESA" = "1")
 
-# VBE PMI utilizes 8 descriptors in GDT + 1 for switching between 16- and 32-bit code
-if test "${USE_VBE_PMI}" = "1" ; then
-  if test -z "${NUM_APP_DRV_GDT_DESCRIPTORS}"; then
-      NUM_APP_DRV_GDT_DESCRIPTORS=9 ;
-  elif test "${NUM_APP_DRV_GDT_DESCRIPTORS}" -lt "9" ; then
-      NUM_APP_DRV_GDT_DESCRIPTORS=9 ; 
-  fi
-fi
 RTEMS_BSPOPTS_SET([NUM_APP_DRV_GDT_DESCRIPTORS],[*],[0])
 RTEMS_BSPOPTS_HELP([NUM_APP_DRV_GDT_DESCRIPTORS],
-[Defines how many descriptors in GDT will be allocated for application or driver usage. This is toggled automatically, if USE_VBE_PMI option is specified])
+[Defines how many descriptors in GDT will be allocated for application or driver usage.])
 
 if test X${CLOCK_DRIVER_USE_TSC} = X1 -a X${CLOCK_DRIVER_USE_8254} = X1 ; then
   AC_MSG_ERROR([pc386 both TSC and 8254 specified for clock driver])

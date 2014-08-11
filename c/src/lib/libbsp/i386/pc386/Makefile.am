@@ -103,7 +103,7 @@ libbsp_a_SOURCES += console/printk_support.c
 libbsp_a_SOURCES += console/vgacons.c
 libbsp_a_SOURCES += console/exar17d15x.c
 libbsp_a_SOURCES += console/rtd316.c
-if USE_VBE_PMI
+if USE_VESA
 include_HEADERS += include/vbe3.h
 libbsp_a_SOURCES += console/fb_vesa.c
 else
