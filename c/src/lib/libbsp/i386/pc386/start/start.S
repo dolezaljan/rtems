@@ -41,6 +41,7 @@
 
 #include <rtems/asm.h>
 #include <rtems/score/cpu.h>
+#include <bsp.h>
 
 /*----------------------------------------------------------------------------+
 | Size of heap and stack:
@@ -152,6 +153,40 @@ speakl:	jmp	speakl             # and SPIN!!!
 
 	/* call	debugPollingGetChar */
 
+#endif
+
+#ifdef USE_VESA
+        /*
+         * Reads EDID through DDC and tries to set best graphical mode
+         */
+#        movw    $0x4F00, ax
+#        movl    esp, edi
+#        subl    $514, edi
+#        int     $0x10
+        movl    $0xB8000,edi
+        movw    $0x4141,(edi)
+        cmp     $0x4F,al
+        je      11f
+        movw    $0x4146,(edi)
+11:     
+        add     $2,edi
+        movw    $0x4141,(edi)
+        cmp     $0x0,ah
+        je      12f
+        movw    $0x4146,(edi)
+12:
+        jmpl    $0x0:13f
+#        jmp     .
+#        nop
+#        movw    $0x0,ax
+#        movw    ax,ds
+#        movw    ax,es
+#        movw    ax,fs
+#        movw    ax,gs
+#        movw    $0x0,ax
+#        jmpl    13f
+13:     
+        
 #endif
 
 /*----------------------------------------------------------------------------+
@@ -328,6 +363,10 @@ SYM (no_sse2_msg) :
 SYM (no_sse3_msg) :
 	.string "PANIC: compiled for SSE3 but your CPU seems to have no SSE3 support\n"
 #endif
+#endif
+
+#ifdef USE_VESA
+
 #endif
 
 END_DATA
