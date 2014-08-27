@@ -41,6 +41,7 @@
 
 #include <rtems/asm.h>
 #include <rtems/score/cpu.h>
+#include <rtems/score/registers.h>
 #include <bsp.h>
 
 /*----------------------------------------------------------------------------+
@@ -62,6 +63,9 @@ BEGIN_CODE
 	PUBLIC (start)		# GNU default entry point
 
 	EXTERN (boot_card)
+#ifdef USE_VBE_RM
+        EXTERN (vesa_realmode_bootup_init)
+#endif
 	EXTERN (_load_segments)
 	EXTERN (_return_to_monitor)
 	EXTERN (_IBMPC_initVideo)
@@ -155,39 +159,63 @@ speakl:	jmp	speakl             # and SPIN!!!
 
 #endif
 
-#ifdef USE_VESA
-        /*
-         * Reads EDID through DDC and tries to set best graphical mode
-         */
-#        movw    $0x4F00, ax
-#        movl    esp, edi
-#        subl    $514, edi
-#        int     $0x10
-        movl    $0xB8000,edi
-        movw    $0x4141,(edi)
-        cmp     $0x4F,al
-        je      11f
-        movw    $0x4146,(edi)
-11:     
-        add     $2,edi
-        movw    $0x4141,(edi)
-        cmp     $0x0,ah
-        je      12f
-        movw    $0x4146,(edi)
-12:
-        jmpl    $0x0:13f
-#        jmp     .
-#        nop
-#        movw    $0x0,ax
-#        movw    ax,ds
-#        movw    ax,es
-#        movw    ax,fs
-#        movw    ax,gs
-#        movw    $0x0,ax
-#        jmpl    13f
-13:     
+#ifdef USE_VBE_RM
+hello:        call    vesa_realmode_bootup_init
+#define VESA_FNC 0x1000 /* position for real mode code reallocation to the first MB of RAM */
+SYM (vesa):
+        /* copy desired code to first 64kB */
+        movl    $cp_end-cp_beg+1, ecx
+        cld
+        movl    $cp_beg, esi
+        movl    $VESA_FNC, edi
+        rep movsb
+        /* jump to copied function */
+        jmp     VESA_FNC
+        /* test that paging is off */
+cp_beg: movl    cr0, eax
+        testl   $CR0_PAGING, eax
+pg_dis: jne     pg_dis /* hopefuly no loader turnes on paging */
+
+        /* load 'real mode like' selectors */
+        movw    $0x20, ax /* fourth element of GDT */
+        movw    ax, ss
+        movw    ax, ds
+        movw    ax, es
+        movw    ax, fs
+        movw    ax, gs
+
+        /* load 'real mode like' code selector */
+        ljmp    $0x18, $VESA_FNC+(cs_real-cp_beg)
+cs_real:
+        .code16
+        /* disable protected mode */
+        movl    cr0, eax
+        andl    $~CR0_PROTECTION_ENABLE, eax
+        movl    eax, cr0
+        /* suppose loader does not shift or damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
+
+        /* flush prefetch queue by far jumping */
+        /* change selector in segmentation register to correct real mode style segment */
+        ljmp    $0x0, $VESA_FNC+(dsels-cp_beg)
+dsels:  xor     ax, ax
+        mov     ax, ss
+        mov     ax, ds
+        mov     ax, es
+        mov     ax, fs
+        mov     ax, gs
         
+        mov     $VESA_FNC+(cp_end-cp_beg), edi
+        mov     $0x4f00, ax
+        int     $0x10
+aftint: 
+        movl    cr0, eax
+        orl     $0x1, eax
+        movl    eax, cr0
+        ljmpl   $0x8,$cp_end
+        .code32
+cp_end:
 #endif
+
 
 /*----------------------------------------------------------------------------+
 | Load the segment registers (this is done by the board's BSP) and perform any
@@ -363,10 +391,6 @@ SYM (no_sse2_msg) :
 SYM (no_sse3_msg) :
 	.string "PANIC: compiled for SSE3 but your CPU seems to have no SSE3 support\n"
 #endif
-#endif
-
-#ifdef USE_VESA
-
 #endif
 
 END_DATA

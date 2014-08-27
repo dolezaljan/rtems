@@ -206,7 +206,8 @@ SYM (_Global_descriptor_table):
 /*---------------------------------------------------------------------------+
 | Descriptor of GDT
 +--------------------------------------------------------------------------*/
-SYM (gdtdesc):
+        PUBLIC(gdtdesc)
+SYM(gdtdesc):
 	.word (GDT_SIZE*8 - 1)
 	.long SYM (_Global_descriptor_table)
 

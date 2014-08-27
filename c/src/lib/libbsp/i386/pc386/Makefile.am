@@ -103,9 +103,9 @@ libbsp_a_SOURCES += console/printk_support.c
 libbsp_a_SOURCES += console/vgacons.c
 libbsp_a_SOURCES += console/exar17d15x.c
 libbsp_a_SOURCES += console/rtd316.c
-if USE_VESA
+if USE_VBE_RM
 include_HEADERS += include/vbe3.h
-libbsp_a_SOURCES += console/fb_vesa.c
+libbsp_a_SOURCES += console/fb_vesa_rm.c
 else
 if USE_CIRRUS_GD5446
 libbsp_a_SOURCES += console/fb_cirrus.c
