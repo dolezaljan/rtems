@@ -51,24 +51,110 @@ static pthread_mutex_t vesa_mutex = PTHREAD_MUTEX_INITIALIZER;
 /*static struct fb_var_screeninfo fb_var;*/
 static struct fb_fix_screeninfo fb_fix;
 
-#define VBE_REG_LEN 22
-struct VBE_registers { /* used for passing parameters and fetching results */
-    uint32_t reg_eax;                           /* off 0  */
-    uint32_t reg_ebx;                           /* off 4  */
-    uint32_t reg_ecx;                           /* off 8  */
-    uint32_t reg_edx;                           /* off c  */
-    uint32_t reg_edi;                           /* off 10 */
-    uint16_t reg_es;                            /* off 14 */
+#define VBE_REG_LEN 0x20
+struct VBE_registers { /* used for passing parameters, fetching results and preserving values */
+    uint32_t reg_eax;                           /* off 0x0  */
+    uint32_t reg_ebx;                           /* off 0x4  */
+    uint32_t reg_ecx;                           /* off 0x8  */
+    uint32_t reg_edx;                           /* off 0xC  */
+    uint32_t reg_edi;                           /* off 0x10 */
+    uint16_t reg_es;                            /* off 0x14 */
+    uint32_t reg_esp_bkp;                       /* off 0x16 */
+    uint16_t idtr_lim_bkp;                      /* off 0x1A */
+    uint32_t idtr_base_bkp;                     /* off 0x1C */
+    /* if adding new element update VBE_REG_LEN as well */
 } __attribute__((__packed__));
 
-/* address where are located VBE buffer, parameter/returned values and code for calling VBE real mode interface */
-#define VESA_SPOT   0x1000
-#define VBE_BUF_LEN 512
-/* position for real mode code reallocation to the first MB of RAM */
-#define VESA_FNC VESA_SPOT+VBE_BUF_LEN+VBE_REG_LEN
+/* *********************************debug code****************************** */
+int pow2(uint8_t pow){
+    int res = 1;
+    while(pow--)res *= 2;
+    return res;
+}
 
-void vbe_realmode_if(){
-        /* copy desired code to first 64kB */
+void printBits(unsigned int bits, uint8_t length){
+    uint8_t i;
+    for(i = 0;i<length;i++){
+        if(i == 8)printk(" ");
+        bits = bits & (pow2(length-i)-1);
+        printk("%u", bits&pow2(length-i-1)?1:0);
+    }
+}
+
+void printDesc(segment_descriptors* desc){
+    unsigned int base, limit;
+    uint8_t* ptr = (uint8_t*)desc;
+    base = desc->base_address_15_0 + (desc->base_address_23_16<<16) +
+    (desc->base_address_31_24<<24);
+    limit = desc->limit_15_0 + (desc->limit_19_16<<16);
+    printk("__________________________________________\n");
+    printk("|  Base  |G|D|L|A|Limit|P|Pr|S|Type|  Base  |        ");
+    if(desc->descriptor_type){
+        printk("Type : %s", desc->type&8?"Code   ":"Data   ");
+        if(desc->type&8){
+            printk("%s", desc->type&4?"Conforming":"nonConforming");
+    printk("\n| 31-24  |r|B| |v|19-16|r|iv|N|    | 23-16  |             ");
+            printk("%s", desc->type&2?"Readable ":"nonReada ");
+        }else{
+            printk("%s", desc->type&4?"ExpandDown":"ExpandUp  ");
+    printk("\n| 31-24  |r|B| |v|19-16|r|iv|N|    | 23-16  |             ");
+            printk("%s", desc->type&2?"Writable ":"nonWrtbl ");
+        }
+        printk("%s\n", desc->type&1?"Accessed":"nonAccessed");
+    }else{
+        printk("\n| 31-24  |r|B| |v|19-16|r|iv|N|    | 23-16  |\n");
+    }
+    printk("|");printBits(desc->base_address_31_24, 8);
+    printk("|%u|%u|%u|%u|", desc->granularity,
+    desc->operation_size, desc->fixed_value_bits, desc->available);
+    printBits(desc->limit_19_16,4);
+    printk(" |%u|", desc->present);
+    printBits(desc->privilege,2);
+    printk("|%u|", desc->descriptor_type);
+    printBits(desc->type,4);
+    printk("|");
+    printBits(desc->base_address_23_16,8);
+    printk("| %x %x %x %x\n", *(ptr+7), *(ptr+6), *(ptr+5), *(ptr+4));
+    printk("_____________________________________________");
+    printk("        Base : %u\n", base);
+    printk("|      Base 15-0      |     Limit 15-0      |");
+    printk("        Limit: %u ", limit);
+    printk("%s\n", desc->granularity?"* 4kiB":"bytes      ");
+    printk("|  ");
+    printBits(desc->base_address_15_0,16);
+    printk("  |  ");
+    printBits(desc->limit_15_0,16);
+    printk("  | %x %x %x %x\n", *(ptr+3), *(ptr+2), *(ptr+1), *(ptr+0));
+//    printk("---------------------------------------------\n");
+}
+/* ***************************************************************************** */
+
+/* address where we are going to put VBE buffer, parameter/returned/preserved values and code for calling VBE real mode interface */
+#define VESA_SPOT   0x1000
+#define VBE_BUF_SPOT VESA_SPOT
+#define VBE_BUF_LEN 512
+#define VBE_REGS_SPOT VBE_BUF_SPOT+VBE_BUF_LEN
+/* position for real mode code reallocation to the first MB of RAM */
+#define VESA_FNC_SPOT VBE_REGS_SPOT+VBE_REG_LEN
+#define VBE_STACK_TOP VESA_FNC_SPOT+0x500
+
+/******************************
+ * VBE_BUF          * 512 B   *
+ ******************************
+ * VBE_REGs         * 32 B    *
+ ******************************
+ * VESA_FNC         *         *
+ ******************** 0x500 B *
+ * STACK            *         *
+ ******************************/
+
+extern int BSP_wait_polled_input(); /* for debugging purposes */
+
+/**
+ * This function presumes prepared real mode like descriptors for code (index 4 - selector 0x20) and data (index 3 - selector 0x18) in the GDT.
+ */
+static void vbe_realmode_if(){
+        /* copy desired code to first 64kB of RAM */
     __asm__ volatile(   "\t"
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
@@ -77,10 +163,12 @@ void vbe_realmode_if(){
         "rep movsb\n\t"
         /* test that paging is off */
         "movl    %%cr0, %%eax\n\t"
-        "testl   %1, %%eax\n"
-"pg_dis: jne     pg_dis\n\t" /* hopefuly no loader turnes on paging */
+        "testl   %3, %%eax\n"
+"pg_dis: jne     pg_dis\n\t" /* hopefuly no loader turns on paging */
+        "cli\n\t"
         /* jump to copied function */
-        "jmp     %3\n"
+        "movl    %0, %%eax\n\t"
+        "jmp     %%eax\n"
         /* load 'real mode like' selectors */
 "cp_beg: movw    $0x20, %%ax\n\t" /* fourth element of GDT */
         "movw    %%ax, %%ss\n\t"
@@ -95,59 +183,80 @@ void vbe_realmode_if(){
         ".code16\n\t"
         /* disable protected mode */
         "movl    %%cr0, %%eax\n\t"
-        "andl    %4, %%eax\n\t"
+        "andl    %5, %%eax\n\t"
         "movl    %%eax, %%cr0\n\t"
-        /* suppose loader does not shift or damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
-
+        /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
+        /* XXX: consider preserving idtr */
+//        "movl    %1+0x1A, %%eax\n\t"
+//        "sidt    (%%eax)\n\t"
+        "movl    %0+(begidt-cp_beg), %%eax\n\t"
+        "lidt    (%%eax)\n\t"
         /* flush prefetch queue by far jumping */
         /* change selector in segmentation register to correct real mode style segment */
         "ljmp    $0x0, %0+(dsels-cp_beg)\n"
+        /* limit and base for realmode interrupt descriptor table */
+"begidt:"
+        ".word 0x3FF\n\t"
+        ".long 0\n\t"
 "dsels:  xor     %%ax, %%ax\n\t"
         "mov     %%ax, %%ss\n\t"
         "mov     %%ax, %%ds\n\t"
-        "mov     %%ax, %%es\n\t"
         "mov     %%ax, %%fs\n\t"
         "mov     %%ax, %%gs\n\t"
-        
-        "mov     %0+(cp_end-cp_beg), %%edi\n\t"
         /* fill registers with parameters */
-        "movl    %5, %%esi\n\t"
+        "movl    %1, %%esi\n\t"
         "movl    0x00(%%esi), %%eax\n\t"
         "movl    0x04(%%esi), %%ebx\n\t"
         "movl    0x08(%%esi), %%ecx\n\t"
         "movl    0x0c(%%esi), %%edx\n\t"
         "movl    0x10(%%esi), %%edi\n\t"
         "movw    0x14(%%esi), %%es\n\t"
-
+        /* backup stack pointer */
+        "movl    %%esp, 0x16(%%esi)\n\t"
+        /* establish rm stack */
+        "movl    %2, %%esp\n\t"
         "int     $0x10\n\t"
-//        "pushl   %%esi\n\t"
-        "movl    %5, %%esi\n\t"
+
+        /* ---debug helper--- writes colored A on the left side at the third line to the video memory */
+//        "movw   $0xB800, %%ax\n\t"
+//        "movw   %%ax, %%ds\n\t"
+//        "movl   $0x140, %%eax\n\t"
+//        "movw   $0x4141, %%bx\n\t"
+//        "movw   %%bx, 0x0(%%eax)\n\t"
+//        "her: jmp    her\n\t"
+        /* ---end debug helper --- */
+
+        /* fill return structure */
+        "movl    %1, %%esi\n\t"
         "movl    %%eax,0x00(%%esi)\n\t"
         "movl    %%ebx,0x04(%%esi)\n\t"
         "movl    %%ecx,0x08(%%esi)\n\t"
         "movl    %%edx,0x0c(%%esi)\n\t"
         "movl    %%ebp,0x10(%%esi)\n\t"
         "movw    %%es, 0x14(%%esi)\n\t"
-//        "popl    %%esi\n\t"
+        /* restore original stack pointer */
+        "movl    0x16(%%esi),%%esp\n\t"
 "aftint:"
-        /* fill return structure */
-
+        /* return to protected mode */
         "movl    %%cr0, %%eax     \n\t"
-        "orl     %2, %%eax    \n\t"
+        "orl     %4, %%eax    \n\t"
         "movl    %%eax, %%cr0     \n\t"
         "ljmpl   $0x8,$cp_end \n\t"
         ".code32\n"
-"cp_end: movl    $0x10,%%ax\n\t"
+        /* reload segmentation registers */
+"cp_end: movw    $0x10,%%ax\n\t"
         "movw    %%ax, %%ss\n\t"
         "movw    %%ax, %%ds\n\t"
         "movw    %%ax, %%es\n\t"
         "movw    %%ax, %%fs\n\t"
         "movw    %%ax, %%gs\n\t"
+        /* restore IDTR */
+//        "movl    %1+0x1A, %%eax\n\t"
+//        "lidt    (%%eax)\n\t"
         : 
-        : "i"(VESA_FNC), "i"(CR0_PAGING), "i"(CR0_PROTECTION_ENABLE), "r"(VESA_FNC), "i"(~CR0_PROTECTION_ENABLE), "i"(VESA_SPOT+VBE_BUF_LEN)
-        : "memory", "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi"
+        : "i"(VESA_FNC_SPOT), "i"(VBE_REGS_SPOT), "i"(VBE_STACK_TOP), "i"(CR0_PAGING), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE)
+        : "memory", "eax", "ebx", "ecx", "edx", "esi", "edi"
     );
-
 }
 
 void vesa_realmode_bootup_init(){
@@ -156,11 +265,59 @@ void vesa_realmode_bootup_init(){
     #define rml_limit 0xFFFF
     uint16_t rml_code_dsc, rml_data_dsc;
 
-    /* load GDT register with RTEMS gdt struct */
+    /* print descriptors */
+/*    unsigned 			gdt_limit;
+    segment_descriptors* 	gdt_entry_tbl;
+    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
+    int i = 0;
+    while((gdt_limit+1)/8>i){
+        printk("%d",i);
+        printDesc(&gdt_entry_tbl[i]);
+        i++;
+        BSP_wait_polled_input();
+    }*/
+
+    /* find what descriptor is currently in CS */
+/*    uint16_t oldcs;
+    __asm__ volatile(   "\t"
+                        "lgdt gdtdesc\n\t"
+                        "lcall $0x8, $1f\n\t"
+                        "1: \t"
+                        "addl $4,%%esp\n\t"
+                        "popw %0\n\t"
+                        "addl $2,%%esp\n\t"
+                        :
+                        : "r" (oldcs)
+    );
+    printk("origCS: 0x%x\n", oldcs); */
+/*    interrupt_gate_descriptor* idttable;
+    unsigned idtlimit;
+    i386_get_info_from_IDTR (&idttable, &idtlimit);
+    printk("sidt: start 0x%p, limit 0x%x \n",idttable,idtlimit);
+    BSP_wait_polled_input();
+        printk("interrupt vector table...\n");
+        int i = 0;
+        while(i<24){
+            printk("\n0x%x:\t0x%x\t0x%x\t0x%x:\t0x%x\t0x%x\t0x%x:\t0x%x\t0x%x", i, *(uint16_t *)(4*i+2), *(uint16_t *)(4*i), i+24, *(uint16_t *)(4*(i+24)+2), *(uint16_t *)(4*(i+24)), i+48, *(uint16_t *)(4*(i+48)+2), *(uint16_t *)(4*(i+48)));
+            i++;
+        }
+        BSP_wait_polled_input();
+        printk("\n");*/
+
+    /* load GDT register with RTEMS gdt struct and reload segment registers */
     __asm__ volatile(   "\t"
                         "lgdt gdtdesc\n\t" /* load RTEMS gdt descriptor */
                         "ljmp $0x8, $1f\n" /* assuming code segment descriptor is the first entry in GDT */
-                        "1:"
+                        "1:\t"
+                        "movw $0x10, %%ax\n\t" /* assuming data segment descriptor is the second entry in GDT */
+                        "movw %%ax, %%ds\n\t"
+                        "movw %%ax, %%es\n\t"
+                        "movw %%ax, %%fs\n\t"
+                        "movw %%ax, %%gs\n\t"
+                        "movw %%ax, %%ss\n\t"
+                        :
+                        :
+                        : "eax"
                     );
     
     rml_code_dsc = i386_find_empty_gdt_entry();
@@ -201,39 +358,86 @@ ord:    goto ord; /* selector to GDT out of range */
 
     /* structure containing parameters */
     /* after call to VBE realmode interface, there will be returned values */
-    void *VBE_buffer = (void *)(VESA_SPOT);
-    struct VBE_registers *parret = (struct VBE_registers *)(VESA_SPOT+VBE_BUF_LEN);
+    void *VBE_buffer = (void *)(VBE_BUF_SPOT);
+    struct VBE_registers *parret = (struct VBE_registers *)(VBE_REGS_SPOT);
 
     parret->reg_eax = 0x4f00;
     parret->reg_edi = (uint32_t)VBE_buffer;
     parret->reg_es = 0x0;
+
+/*    unsigned 			gdt_limit;
+    segment_descriptors* 	gdt_entry_tbl;
+    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
+    int i = 0;
+    while((gdt_limit+1)/8>i){
+        printk("%d",i);
+        printDesc(&gdt_entry_tbl[i]);
+        i++;
+        BSP_wait_polled_input();
+    }*/
     vbe_realmode_if();
+
+    /* check success of function call */
+        printk("returned eax=0x%x\n", parret->reg_eax);
+    if((parret->reg_eax&0xff)!=0x4f || (parret->reg_eax&0xff00)!=0){
+        printk("Function 00h not supported. eax=0x%x\n", parret->reg_eax);
+    }
 
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)VBE_buffer;
     printk("%s\n", &vib->VbeSignature);
+    BSP_wait_polled_input();
     printk("%x\n", vib->VbeVersion);
-    printk("%s\n", vib->OemStringPtr);
+    BSP_wait_polled_input();
+//    printk("%s\n", vib->OemStringPtr);
     printk("%x\n", vib->Capabilities);
+    BSP_wait_polled_input();
     printk("video modes: ");
-    uint16_t *modeNOPtr = vib->VideoModePtr;
-    while(*modeNOPtr != 0){
-        printk("%x, ", *modeNOPtr);
-        modeNOPtr += sizeof(uint16_t);
+    uint16_t *modeNOPtr = (uint16_t*)vib->VideoModePtr;
+    uint16_t iterator = 0;
+    uint16_t VideoModes[100];
+    while(*(modeNOPtr+iterator) != 0){
+        *(VideoModes+iterator) = *(modeNOPtr+iterator);
+        printk("%x, ", *(VideoModes+iterator));
+        iterator += sizeof(uint16_t);
+    BSP_wait_polled_input();
     }
     printk("\n");
 //    printk("%p\n", vib->VideoModePtr);
     printk("%d\n", vib->TotalMemory);
     printk("%d\n", vib->OemSoftwareRev);
-    printk("%s\n", vib->OemVendorNamePtr);
-    printk("%s\n", vib->OemProductNamePtr);
-    printk("%s\n", vib->OemProductRevPtr);
+//    printk("%s\n", vib->OemVendorNamePtr);
+//    printk("%s\n", vib->OemProductNamePtr);
+//    printk("%s\n", vib->OemProductRevPtr);
 
-    parret->reg_eax = 0x4f01;
-    parret->reg_ecx = *(vib->VideoModePtr);
-    parret->reg_edi = (uint32_t)VBE_buffer;
-    parret->reg_es = 0x0;
-    vbe_realmode_if();
-    printk();
+    iterator = 0;
+    struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_buffer;
+
+    while(VideoModes[iterator]!=0){
+        BSP_wait_polled_input();
+        printk("Mode: %x\n", VideoModes[iterator]);
+        parret->reg_eax = 0x4f01;
+        parret->reg_ecx = VideoModes[iterator];
+        parret->reg_edi = (uint32_t)VBE_buffer;
+        parret->reg_es = 0x0;
+        vbe_realmode_if();
+        printk("returned eax=0x%x\n", parret->reg_eax);
+        printk("ModeAttributes: %x\n", mib->ModeAttributes);
+        printk("WinAAttributes: %x, WinBAttributes: %x\n", mib->WinAAttributes, mib->WinBAttributes);
+        printk("WinGranularity: %x, WinSize: %x\n", mib->WinGranularity, mib->WinSize);
+        printk("WinASegment: %x, WinBSegment: %x\n", mib->WinASegment, mib->WinBSegment);
+        printk("WinFuncPtr: %p, BytesPerScanLine: %x\n", mib->WinFuncPtr, mib->BytesPerScanLine);
+        printk("XResolution: %d, YResolution: %d\n", mib->XResolution, mib->YResolution);
+        printk("XCharSize: %dpx, YCharSize: %dpx\n", mib->XCharSize, mib->YCharSize);
+        printk("NumberOfPlanes: %d\n", mib->NumberOfPlanes);
+        printk("BitsPerPixel: %d\n", mib->BitsPerPixel);
+        printk("NumberOfBanks: %d\n", mib->NumberOfBanks);
+        printk("MemoryModel: %d\n", mib->MemoryModel);
+        printk("BankSize: %dKB\n", mib->BankSize);
+        printk("NumberOfImagePages: %d\n", mib->NumberOfImagePages);
+        printk("Reserverd: %x", mib->Reserved0);
+        printk("...\nPhysBasePtr: 0x%p -- physical address for flat memory frame buffer\n...\n\n");
+        iterator += sizeof(uint16_t);
+    }
 
     vib = (void *) 0;
 stop: goto stop;
@@ -275,11 +479,11 @@ frame_buffer_initialize(
 
     return RTEMS_SUCCESSFUL;
 
-_error:
-    printk("error\n");
-    BSP_wait_polled_input();
-    free_used_descriptors();
-    return 2;
+//_error:
+//    printk("error\n");
+//    BSP_wait_polled_input();
+//    free_used_descriptors();
+//    return 2;
 }
 
 
