@@ -9,8 +9,8 @@
 /*
  * vbe3.h  - This file contains definitions for constants related to VBE.
  *          More information can be found at
- *	<http://http://www.vesa.org/vesa-standards/free-standards/>
- *          VBE Core Function Standard V.3 may be found at
+ *	<http://www.vesa.org/vesa-standards/free-standards/>
+ *          VESA public standards may be found at
  *      <http://www.vesa.org/wp-content/uploads/2010/12/thankspublic.htm>
  *
  * Copyright (C) 2014  Jan Doležal (dolezj21@fel.cvut.cz)
@@ -31,6 +31,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
+
+
+/* VESA BIOS EXTENSION (VBE) Core functions Standard Version: 3.0 Date: September 16, 1998 */
 
 /* VBE RETURN STATUS */
 #define VBE_functionSupported        0x4F  /* AL == 4Fh: Function is supported */
@@ -88,26 +91,26 @@ extern "C" {
 #define VBE_C132R50           0x10B    /* 15-bit mode, Columns: 132, Rows: 50  */
 #define VBE_C132R60           0x10C    /* 15-bit mode, Columns: 132, Rows: 60  */
 
-/* VBE function numbers */
-#define VBE_RetVBEConInf       0x00  /* Return VBE Controller Information */
-#define VBE_RetVBEModInf       0x01  /* Return VBE Mode Information */
-#define VBE_SetVBEMod          0x02  /* Set VBE Mode */
-#define VBE_RetCurVBEMod       0x03  /* Return Current VBE Mode */
-#define VBE_SavResSta          0x04  /* Save/Restore State */
-#define VBE_DisWinCon          0x05  /* Display Window Control */
-#define VBE_SetGetLogScaLinLen 0x06  /* Set/Get Logical Scan Line Length */
-#define VBE_SetGetDisSta       0x07  /* Set/Get Display Start */
-#define VBE_SetGetDACPalFor    0x08  /* Set/Get DAC Palette Format */
-#define VBE_SetGetPalDat       0x09  /* Set/Get Palette Data */
-#define VBE_RetVBEProModInt    0x0A  /* Return VBE Protected Mode Interface */
-#define VBE_GetSetpixclo       0x0B  /* Get/Set pixel clock */
-#define VBE_PowManExt          0x10  /* Power Management Extensions (PM) */
-#define VBE_FlaPanIntExt       0x11  /* Flat Panel Interface Extensions (FP) */
-#define VBE_AudIntExt          0x13  /* Audio Interface Extensions (AI) */
-#define VBE_OEMExt             0x14  /* OEM Extensions */
-#define VBE_DisDatCha          0x15  /* Display Data Channel (DDC) */
+/* VBE function numbers - passed in AX register */
+#define VBE_RetVBEConInf       0x4F00  /* Return VBE Controller Information */
+#define VBE_RetVBEModInf       0x4F01  /* Return VBE Mode Information */
+#define VBE_SetVBEMod          0x4F02  /* Set VBE Mode */
+#define VBE_RetCurVBEMod       0x4F03  /* Return Current VBE Mode */
+#define VBE_SavResSta          0x4F04  /* Save/Restore State */
+#define VBE_DisWinCon          0x4F05  /* Display Window Control */
+#define VBE_SetGetLogScaLinLen 0x4F06  /* Set/Get Logical Scan Line Length */
+#define VBE_SetGetDisSta       0x4F07  /* Set/Get Display Start */
+#define VBE_SetGetDACPalFor    0x4F08  /* Set/Get DAC Palette Format */
+#define VBE_SetGetPalDat       0x4F09  /* Set/Get Palette Data */
+#define VBE_RetVBEProModInt    0x4F0A  /* Return VBE Protected Mode Interface */
+#define VBE_GetSetpixclo       0x4F0B  /* Get/Set pixel clock */
+#define VBE_PowManExt          0x4F10  /* Power Management Extensions (PM) */
+#define VBE_FlaPanIntExt       0x4F11  /* Flat Panel Interface Extensions (FP) */
+#define VBE_AudIntExt          0x4F13  /* Audio Interface Extensions (AI) */
+#define VBE_OEMExt             0x4F14  /* OEM Extensions */
+#define VBE_DisDatCha          0x4F15  /* Display Data Channel (DDC), Serial Control Interface (SCI) */
 
-/* VBE subfunction numbers */
+/* VBE subfunction numbers - passed in BL register */
 #define VBE_RetVBESupSpeInf    0x00  /* Return VBE Supplemental Specification Information */
 
 /* *** Structures *** */
@@ -332,6 +335,37 @@ struct VBE_SupVbeInfoBlock {
                                          /*   0 =  Vertical sync polarity is positive (+) */
                                          /*   1 =  Vertical sync polarity is negative (-) */
 
+
+/* VESA BIOS Extensions/Display Data Channel Standard Version: 1.1 November 18, 1999 */
+
+/* VBE/DDC subfunction numbers - passed in BL register */
+#define VBEDDC_Capabilities    0x0   /* Report VBE/DDC Capabilities */
+#define VBEDDC_ReadEDID        0x1   /* Read EDID */
+
+/* DDC Capabilities */
+/* DDC level supported - returned in BL register */
+#define VBEDDC_1SupportedMask  0x1   /* 0 - DDC1 not supported; 1 - DDC1 supported */
+#define VBEDDC_2SupportedMask  0x2   /* 0 - DDC2 not supported; 1 - DDC2 supported */
+#define VBEDDC_scrBlnkDatTrMs  0x4   /* 0 - Screen not blanked during data transfer; 1 - Screen blanked during data transfer */
+
+
+/* VESA BIOS Extensions/Serial Control Interface Standard Version: 1.0 Revision: 2 Date: July 2, 1997 */
+
+/* VBE/SCI subfunction numbers - passed in BL register */
+#define VBESCI_ReportCapabil   0x10  /* Report VBE/SCI Capabilities */
+#define VBESCI_BegSCLSDACtrl   0x11  /* Begin SCL/SDA control */
+#define VBESCI_EndSCLSDACtrl   0x12  /* End SCL/SDA control */
+#define VBESCI_WrtSCLClkLine   0x13  /* Write SCL clock line */
+#define VBESCI_WrtSDADatLine   0x14  /* Write SDA data line */
+#define VBESCI_RdySCLClkLine   0x15  /* Read SCL clock line */
+#define VBESCI_RdySDADatLine   0x16  /* Read SDA data line */
+
+/* SCI Capabilities */
+/* I2C level supported - returned in BL register */
+#define VBESCI_capSCLwrtMask   0x1   /* Can write to SCL clock line */
+#define VBESCI_capSDAwrtMask   0x2   /* Can write to SDA data line */
+#define VBESCI_capSCLrdyMask   0x4   /* Can read from SCL clock line */
+#define VBESCI_capSDArdyMask   0x8   /* Can read from SDA data line */
 
 #ifdef __cplusplus
 }

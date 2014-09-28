@@ -65,70 +65,6 @@ struct VBE_registers { /* used for passing parameters, fetching results and pres
     /* if adding new element update VBE_REG_LEN as well */
 } __attribute__((__packed__));
 
-/* *********************************debug code****************************** */
-int pow2(uint8_t pow){
-    int res = 1;
-    while(pow--)res *= 2;
-    return res;
-}
-
-void printBits(unsigned int bits, uint8_t length){
-    uint8_t i;
-    for(i = 0;i<length;i++){
-        if(i == 8)printk(" ");
-        bits = bits & (pow2(length-i)-1);
-        printk("%u", bits&pow2(length-i-1)?1:0);
-    }
-}
-
-void printDesc(segment_descriptors* desc){
-    unsigned int base, limit;
-    uint8_t* ptr = (uint8_t*)desc;
-    base = desc->base_address_15_0 + (desc->base_address_23_16<<16) +
-    (desc->base_address_31_24<<24);
-    limit = desc->limit_15_0 + (desc->limit_19_16<<16);
-    printk("__________________________________________\n");
-    printk("|  Base  |G|D|L|A|Limit|P|Pr|S|Type|  Base  |        ");
-    if(desc->descriptor_type){
-        printk("Type : %s", desc->type&8?"Code   ":"Data   ");
-        if(desc->type&8){
-            printk("%s", desc->type&4?"Conforming":"nonConforming");
-    printk("\n| 31-24  |r|B| |v|19-16|r|iv|N|    | 23-16  |             ");
-            printk("%s", desc->type&2?"Readable ":"nonReada ");
-        }else{
-            printk("%s", desc->type&4?"ExpandDown":"ExpandUp  ");
-    printk("\n| 31-24  |r|B| |v|19-16|r|iv|N|    | 23-16  |             ");
-            printk("%s", desc->type&2?"Writable ":"nonWrtbl ");
-        }
-        printk("%s\n", desc->type&1?"Accessed":"nonAccessed");
-    }else{
-        printk("\n| 31-24  |r|B| |v|19-16|r|iv|N|    | 23-16  |\n");
-    }
-    printk("|");printBits(desc->base_address_31_24, 8);
-    printk("|%u|%u|%u|%u|", desc->granularity,
-    desc->operation_size, desc->fixed_value_bits, desc->available);
-    printBits(desc->limit_19_16,4);
-    printk(" |%u|", desc->present);
-    printBits(desc->privilege,2);
-    printk("|%u|", desc->descriptor_type);
-    printBits(desc->type,4);
-    printk("|");
-    printBits(desc->base_address_23_16,8);
-    printk("| %x %x %x %x\n", *(ptr+7), *(ptr+6), *(ptr+5), *(ptr+4));
-    printk("_____________________________________________");
-    printk("        Base : %u\n", base);
-    printk("|      Base 15-0      |     Limit 15-0      |");
-    printk("        Limit: %u ", limit);
-    printk("%s\n", desc->granularity?"* 4kiB":"bytes      ");
-    printk("|  ");
-    printBits(desc->base_address_15_0,16);
-    printk("  |  ");
-    printBits(desc->limit_15_0,16);
-    printk("  | %x %x %x %x\n", *(ptr+3), *(ptr+2), *(ptr+1), *(ptr+0));
-//    printk("---------------------------------------------\n");
-}
-/* ***************************************************************************** */
-
 /* address where we are going to put VBE buffer, parameter/returned/preserved values and code for calling VBE real mode interface */
 #define VESA_SPOT   0x1000
 #define VBE_BUF_SPOT VESA_SPOT
@@ -217,15 +153,6 @@ static void vbe_realmode_if(){
         "movl    %2, %%esp\n\t"
         "int     $0x10\n\t"
 
-        /* ---debug helper--- writes colored A on the left side at the third line to the video memory */
-//        "movw   $0xB800, %%ax\n\t"
-//        "movw   %%ax, %%ds\n\t"
-//        "movl   $0x140, %%eax\n\t"
-//        "movw   $0x4141, %%bx\n\t"
-//        "movw   %%bx, 0x0(%%eax)\n\t"
-//        "her: jmp    her\n\t"
-        /* ---end debug helper --- */
-
         /* fill return structure */
         "movl    %1, %%esi\n\t"
         "movl    %%eax,0x00(%%esi)\n\t"
@@ -264,45 +191,6 @@ void vesa_realmode_bootup_init(){
     #define rml_base  0x0
     #define rml_limit 0xFFFF
     uint16_t rml_code_dsc, rml_data_dsc;
-
-    /* print descriptors */
-/*    unsigned 			gdt_limit;
-    segment_descriptors* 	gdt_entry_tbl;
-    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
-    int i = 0;
-    while((gdt_limit+1)/8>i){
-        printk("%d",i);
-        printDesc(&gdt_entry_tbl[i]);
-        i++;
-        BSP_wait_polled_input();
-    }*/
-
-    /* find what descriptor is currently in CS */
-/*    uint16_t oldcs;
-    __asm__ volatile(   "\t"
-                        "lgdt gdtdesc\n\t"
-                        "lcall $0x8, $1f\n\t"
-                        "1: \t"
-                        "addl $4,%%esp\n\t"
-                        "popw %0\n\t"
-                        "addl $2,%%esp\n\t"
-                        :
-                        : "r" (oldcs)
-    );
-    printk("origCS: 0x%x\n", oldcs); */
-/*    interrupt_gate_descriptor* idttable;
-    unsigned idtlimit;
-    i386_get_info_from_IDTR (&idttable, &idtlimit);
-    printk("sidt: start 0x%p, limit 0x%x \n",idttable,idtlimit);
-    BSP_wait_polled_input();
-        printk("interrupt vector table...\n");
-        int i = 0;
-        while(i<24){
-            printk("\n0x%x:\t0x%x\t0x%x\t0x%x:\t0x%x\t0x%x\t0x%x:\t0x%x\t0x%x", i, *(uint16_t *)(4*i+2), *(uint16_t *)(4*i), i+24, *(uint16_t *)(4*(i+24)+2), *(uint16_t *)(4*(i+24)), i+48, *(uint16_t *)(4*(i+48)+2), *(uint16_t *)(4*(i+48)));
-            i++;
-        }
-        BSP_wait_polled_input();
-        printk("\n");*/
 
     /* load GDT register with RTEMS gdt struct and reload segment registers */
     __asm__ volatile(   "\t"
@@ -361,36 +249,29 @@ ord:    goto ord; /* selector to GDT out of range */
     void *VBE_buffer = (void *)(VBE_BUF_SPOT);
     struct VBE_registers *parret = (struct VBE_registers *)(VBE_REGS_SPOT);
 
-    parret->reg_eax = 0x4f00;
+    parret->reg_eax = VBE_RetVBEConInf;
     parret->reg_edi = (uint32_t)VBE_buffer;
     parret->reg_es = 0x0;
 
-/*    unsigned 			gdt_limit;
-    segment_descriptors* 	gdt_entry_tbl;
-    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
-    int i = 0;
-    while((gdt_limit+1)/8>i){
-        printk("%d",i);
-        printDesc(&gdt_entry_tbl[i]);
-        i++;
-        BSP_wait_polled_input();
-    }*/
     vbe_realmode_if();
 
     /* check success of function call */
         printk("returned eax=0x%x\n", parret->reg_eax);
-    if((parret->reg_eax&0xff)!=0x4f || (parret->reg_eax&0xff00)!=0){
+    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax&0xff00)!=VBE_callSuccessful){
         printk("Function 00h not supported. eax=0x%x\n", parret->reg_eax);
     }
 
+/* see VBE CORE FUNCTIONS VERSION 3.0 Pag.65 - Appendix 1 - VBE Implementation Considerations */
+#define VBE_STUB_VideoModeList 0xFFFF
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)VBE_buffer;
-    printk("%s\n", &vib->VbeSignature);
-    BSP_wait_polled_input();
-    printk("%x\n", vib->VbeVersion);
-    BSP_wait_polled_input();
-//    printk("%s\n", vib->OemStringPtr);
-    printk("%x\n", vib->Capabilities);
-    BSP_wait_polled_input();
+    if(*(uint16_t*)vib->VideoModePtr == VBE_STUB_VideoModeList)
+    {
+        printk("VBE Core not implemented!\n");
+    }
+    printk("Signature: %s\n", &vib->VbeSignature);
+    printk("VBE Ver  :%x\n", vib->VbeVersion);
+    printk("OemString:%s\n", vib->OemStringPtr);
+    printk("Capabilit:%x\n", vib->Capabilities);
     printk("video modes: ");
     uint16_t *modeNOPtr = (uint16_t*)vib->VideoModePtr;
     uint16_t iterator = 0;
@@ -399,15 +280,47 @@ ord:    goto ord; /* selector to GDT out of range */
         *(VideoModes+iterator) = *(modeNOPtr+iterator);
         printk("%x, ", *(VideoModes+iterator));
         iterator += sizeof(uint16_t);
-    BSP_wait_polled_input();
     }
     printk("\n");
-//    printk("%p\n", vib->VideoModePtr);
-    printk("%d\n", vib->TotalMemory);
-    printk("%d\n", vib->OemSoftwareRev);
-//    printk("%s\n", vib->OemVendorNamePtr);
-//    printk("%s\n", vib->OemProductNamePtr);
-//    printk("%s\n", vib->OemProductRevPtr);
+    printk("TotMemory:%d\n", vib->TotalMemory);
+    printk("OemSwRev :%d\n", vib->OemSoftwareRev);
+    printk("OemVenNam:%s\n", vib->OemVendorNamePtr);
+    printk("OemProdNm:%s\n", vib->OemProductNamePtr);
+    printk("OemProRev:%s\n", vib->OemProductRevPtr);
+
+    BSP_wait_polled_input();
+
+    printk("VBE/DDC capabilities:\n");
+    parret->reg_eax = VBE_DisDatCha;
+    parret->reg_ebx = VBEDDC_Capabilities;
+    parret->reg_ecx = 0; /* controller unit nr. */
+    parret->reg_edi = 0;
+    parret->reg_es = 0;
+    vbe_realmode_if();
+    /* check success of function call */
+        printk("returned eax=0x%x\n", parret->reg_eax);
+    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax&0xff00)!=VBE_callSuccessful){
+        printk("Function 15h not supported. eax=0x%x\n", parret->reg_eax);
+    }
+    printk("It takes approximately %d seconds to transfer one EDID block (128 bytes).\n", parret->reg_ebx>>8&0xff);
+    printk("DDC level supported: %x\n",parret->reg_ebx&0xff);
+    
+
+    BSP_wait_polled_input();
+    printk("Read E-EDID through VBE/DDC\n");
+    //struct EDID *edid = (struct EDID *)VBE_buffer;
+    parret->reg_eax = VBE_DisDatCha;
+    parret->reg_ebx = VBEDDC_ReadEDID;
+    parret->reg_ecx = 0; /* controller unit nr. */
+    parret->reg_edx = 0; /* EDID block nr. */
+    parret->reg_edi = (uint32_t)VBE_buffer;
+    parret->reg_es = 0x0;
+    vbe_realmode_if();
+    /* check success of function call */
+        printk("returned eax=0x%x\n", parret->reg_eax);
+    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax&0xff00)!=VBE_callSuccessful){
+        printk("Function 15h not supported. eax=0x%x\n", parret->reg_eax);
+    }
 
     iterator = 0;
     struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_buffer;
@@ -415,7 +328,7 @@ ord:    goto ord; /* selector to GDT out of range */
     while(VideoModes[iterator]!=0){
         BSP_wait_polled_input();
         printk("Mode: %x\n", VideoModes[iterator]);
-        parret->reg_eax = 0x4f01;
+        parret->reg_eax = VBE_RetVBEModInf;
         parret->reg_ecx = VideoModes[iterator];
         parret->reg_edi = (uint32_t)VBE_buffer;
         parret->reg_es = 0x0;
@@ -435,7 +348,7 @@ ord:    goto ord; /* selector to GDT out of range */
         printk("BankSize: %dKB\n", mib->BankSize);
         printk("NumberOfImagePages: %d\n", mib->NumberOfImagePages);
         printk("Reserverd: %x", mib->Reserved0);
-        printk("...\nPhysBasePtr: 0x%p -- physical address for flat memory frame buffer\n...\n\n");
+        printk("...\nPhysBasePtr: 0x%p -- physical address for flat memory frame buffer\n...\n\n", mib->PhysBasePtr);
         iterator += sizeof(uint16_t);
     }
 
