@@ -86,6 +86,10 @@ struct VBE_registers { /* used for passing parameters, fetching results and pres
 
 extern int BSP_wait_polled_input(); /* for debugging purposes */
 
+uint16_t vbe_usedMode;
+void *vbe_physBasePtrOfUsedMode;
+    
+
 /**
  * This function presumes prepared real mode like descriptors for code (index 4 - selector 0x20) and data (index 3 - selector 0x18) in the GDT.
  */
@@ -186,6 +190,92 @@ static void vbe_realmode_if(){
     );
 }
 
+    struct DetailedTimingDescriptor{
+        uint16_t PixelClockDIV10000;
+        uint8_t HorizontalActiveLow;
+        uint8_t HorizontalBlankingLow;
+        uint8_t HorizontalBlankingUp : 4;
+        uint8_t HorizontalActiveUp : 4;
+        uint8_t VerticalActiveLow;
+        uint8_t VerticalBlankingLow;
+        uint8_t VerticalBlankingUp : 4;
+        uint8_t VerticalActiveUp : 4;
+        uint8_t HorizontalSyncOffsetLow;
+        uint8_t HorizontalSyncPulseWidthLow;
+        uint8_t VerticalSyncPulseWidthLow : 4;
+        uint8_t VerticalSyncOffsetLow : 4;
+        uint8_t VerticalSyncPulseWidthUp : 2;
+        uint8_t VerticalSyncOffsetUp : 2;
+        uint8_t HorizontalSyncPulseWidthUp : 2;
+        uint8_t HorizontalSyncOffsetUp : 2;
+        uint8_t HorizontalImageSizeLow;
+        uint8_t VerticalImageSizeLow;
+        uint8_t VerticalImageSizeUp : 4;
+        uint8_t HorizontalImageSizeUp : 4;
+        uint8_t HorizontalBorder;
+        uint8_t VerticalBorder;
+        uint8_t Flags;
+    }__attribute__((__packed__));
+    struct MonitorDescriptor{
+        uint16_t Flag0;
+        uint8_t Flag1;
+        uint8_t DataTypeTag;
+        uint8_t Flag2;
+        uint8_t DescriptorData[13];
+    }__attribute__((__packed__));
+
+union DTD_MD {
+    struct DetailedTimingDescriptor dtd;
+    struct MonitorDescriptor md;
+};
+
+struct edid1{
+    uint8_t Header[8];
+/*  VendorProductIdentification */
+    uint16_t IDManufacturerName;
+    uint16_t IDProductCode;
+    uint32_t IDSerialNumber;
+    uint8_t WeekofManufacture;
+    uint8_t YearofManufacture;
+/*  EDIDStructureVersionRevisionLevel */
+    uint8_t Version;
+    uint8_t Revision;
+/*  BasicDisplayParametersFeatures */
+    uint8_t VideoInputDefinition;
+    uint8_t MaxHorizontalImageSize;
+    uint8_t MaxVerticalImageSize;
+    uint8_t DisplayTransferCharacteristic;
+    uint8_t FeatureSupport;
+/*  Color Characteristics */
+    uint8_t RedGreenLowBits;
+    uint8_t BlueWhiteLowBits;
+    uint8_t RedX;
+    uint8_t RedY;
+    uint8_t GreenX;
+    uint8_t GreenY;
+    uint8_t BlueX;
+    uint8_t BlueY;
+    uint8_t WhiteX;
+    uint8_t WhiteY;
+/*  EstablishedStandardTimings */
+    uint8_t EstablishedTimings[3];
+/*  Standard Timing Identification */
+    uint16_t StandardTimingIdentification1;
+    uint16_t StandardTimingIdentification2;
+    uint16_t StandardTimingIdentification3;
+    uint16_t StandardTimingIdentification4;
+    uint16_t StandardTimingIdentification5;
+    uint16_t StandardTimingIdentification6;
+    uint16_t StandardTimingIdentification7;
+    uint16_t StandardTimingIdentification8;
+/*  DetailedTimingDescriptions / MonitorDescriptions */
+    union DTD_MD d1;
+    union DTD_MD d2;
+    union DTD_MD d3;
+    union DTD_MD d4;
+    uint8_t ExtensionFlag;
+    uint8_t Checksum;
+}__attribute__((__packed__));
 
 void *rmptr_to_pmptr(void *ptr){
     uint32_t tmp = (uint32_t)ptr>>12&0xFFFF0;
@@ -338,6 +428,45 @@ ord:    goto ord; /* selector to GDT out of range */
     if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax&0xff00)!=VBE_callSuccessful){
         printk("Function 15h not supported. eax=0x%x\n", parret->reg_eax);
     }
+    
+    uint8_t checksum = 0;
+    iterator = 0;
+    while(iterator<128){
+        switch(iterator){
+            case 0: printk("\nHeader ");break;
+            case 8: printk("\nVendor / Product Identification ");break;
+            case 18: printk("\nEDID Structure Version / Revision Level ");break;
+            case 20: printk("\nBasic Display Parameters / Features ");break;
+            case 35: printk("\nEstablished / Standard Timings ");break;
+            case 54: printk("\nDetailed Timing Descriptions / Monitor Descriptions\n");break;
+            case 72:
+            case 90: 
+            case 108: printk("\n");break;
+            case 126: printk("\nExtension Flag ");break;
+            case 127: printk("\nChecksum ");break;
+        }
+        checksum += *(uint8_t *)(VBE_buffer+iterator);
+        printk("%x ", *(uint8_t *)(VBE_buffer+iterator));
+        iterator++;
+    }
+    if(checksum)
+    {
+        printk("\ncheckusm failed\n");
+    }else{
+        printk("\nchecksum OK\n");
+    }
+    BSP_wait_polled_input();
+    struct edid1 edid1 = *(struct edid1 *)VBE_buffer;
+
+    printk("ID Manufacturer Name: %c%c%c\n",((edid1.IDManufacturerName>>10)&0x1F)+64,((edid1.IDManufacturerName>>5)&0x1F)+64,(edid1.IDManufacturerName&0x1F)+64);
+    if(edid1.d1.md.Flag0 != 0 && (edid1.d1.md.Flag1 != 0 || edid1.d1.md.Flag2 != 0))
+    {
+        printk("Optimized resolution:\n");
+        printk("horizontal pixels: %d\n", edid1.d1.dtd.HorizontalActiveUp<<8|edid1.d1.dtd.HorizontalActiveLow);
+        printk("vertical lines: %d\n", edid1.d1.dtd.VerticalActiveUp<<8|edid1.d1.dtd.VerticalActiveLow);
+    }
+    printk("S1: %s\n", edid1.d3.md.DescriptorData);
+    printk("S2: %s\n", edid1.d4.md.DescriptorData);
 
     iterator = 0;
     struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_buffer;
@@ -352,6 +481,13 @@ ord:    goto ord; /* selector to GDT out of range */
         vbe_realmode_if();
         printk("returned eax=0x%x\n", parret->reg_eax);
         printk("ModeAttributes: %x\n", mib->ModeAttributes);
+        uint16_t required_mode_attributes = VBE_modSupInHWMask | VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
+        if((mib->ModeAttributes&required_mode_attributes) == required_mode_attributes)
+        {
+            printk("ModeAttributes Satisfied\n");
+        }else{
+            printk("ModeAttributes UNSATISFIED\n");
+        }
         printk("WinAAttributes: %x, WinBAttributes: %x\n", mib->WinAAttributes, mib->WinBAttributes);
         printk("WinGranularity: %x, WinSize: %x\n", mib->WinGranularity, mib->WinSize);
         printk("WinASegment: %x, WinBSegment: %x\n", mib->WinASegment, mib->WinBSegment);
@@ -369,8 +505,62 @@ ord:    goto ord; /* selector to GDT out of range */
         iterator += sizeof(uint16_t);
     }
 
+    iterator = 0;
+    uint16_t optimalMode = 0, mode1024_768 = 0;
+    void * optimalBasePtr = (void *)0,* pbp1024_768 =  (void *)0;
+
+    while(VideoModes[iterator]!=0){
+        parret->reg_eax = VBE_RetVBEModInf;
+        parret->reg_ecx = VideoModes[iterator];
+        parret->reg_edi = (uint32_t)VBE_buffer;
+        parret->reg_es = 0x0;
+        vbe_realmode_if();
+        uint16_t required_mode_attributes = VBE_modSupInHWMask | VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
+        if((mib->ModeAttributes&required_mode_attributes) == required_mode_attributes)
+        {
+            if(mib->XResolution == 1024 && mib->YResolution == 768)
+            {
+                mode1024_768 = VideoModes[iterator];
+                pbp1024_768 = mib->PhysBasePtr;
+            }
+            if(mib->XResolution == (edid1.d1.dtd.HorizontalActiveUp<<8|edid1.d1.dtd.HorizontalActiveLow) && mib->YResolution == (edid1.d1.dtd.VerticalActiveUp<<8|edid1.d1.dtd.VerticalActiveLow)){
+                optimalMode = VideoModes[iterator];
+                optimalBasePtr = mib->PhysBasePtr;
+            }
+        }
+        iterator += sizeof(uint16_t);
+    }
+    printk("optimalMode: %x, optimBP: 0x%p\n1024x768Mode: %x, BP: 0x%p\n", optimalMode, optimalBasePtr, mode1024_768, pbp1024_768);
+
+    /* dummy mode chooser */
+    if(optimalMode!=0 && optimalBasePtr!=0){
+        vbe_usedMode = optimalMode;
+        vbe_physBasePtrOfUsedMode = optimalBasePtr;
+    }
+    else
+    {
+        vbe_usedMode = mode1024_768;
+        vbe_physBasePtrOfUsedMode = pbp1024_768;
+    }
+    
+    BSP_wait_polled_input();
+    printk("setting mode: %x\n", vbe_usedMode);
+    /* set selected mode */
+    parret->reg_eax = VBE_SetVBEMod;
+    parret->reg_ebx = vbe_usedMode | VBE_linearFlatFrameBufMask;
+    parret->reg_edi = (uint32_t)VBE_buffer;
+    parret->reg_es = 0x0;
+    vbe_realmode_if();
+
+    uint32_t iter = 0;
+    while(iter<785000){
+        *(((uint16_t *)vbe_physBasePtrOfUsedMode)+iter) = iter;
+        iter++;
+    }
+
+
     vib = (void *) 0;
-stop: goto stop;
+    mib = (void *) 0;
     /* deallocate gdt entries */
     if(i386_free_gdt_entry(rml_code_dsc))
     {
