@@ -104,7 +104,7 @@ static void vbe_realmode_if(){
         "cli\n\t"
         /* jump to copied function */
         "movl    %0, %%eax\n\t"
-        "jmp     %%eax\n"
+        "jmp     *%%eax\n"
         /* load 'real mode like' selectors */
 "cp_beg: movw    $0x20, %%ax\n\t" /* fourth element of GDT */
         "movw    %%ax, %%ss\n\t"
@@ -186,6 +186,13 @@ static void vbe_realmode_if(){
     );
 }
 
+
+void *rmptr_to_pmptr(void *ptr){
+    uint32_t tmp = (uint32_t)ptr>>12&0xFFFF0;
+    tmp += (uint32_t)ptr&0xFFFF;
+    return (void *) tmp;
+}
+
 void vesa_realmode_bootup_init(){
     /* create 'real mode like' segment descriptors, for switching to real mode */
     #define rml_base  0x0
@@ -253,6 +260,12 @@ ord:    goto ord; /* selector to GDT out of range */
     parret->reg_edi = (uint32_t)VBE_buffer;
     parret->reg_es = 0x0;
 
+#define VBE_SIGNATURE "VESA"
+#define VBE20plus_SIGNATURE "VBE2"
+    struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)VBE_buffer;
+    /* indicate to graphics bios that VBE 2.0 extended information is desired */
+    strncpy((char *)&vib->VbeSignature, VBE20plus_SIGNATURE, 4*sizeof(size_t));
+
     vbe_realmode_if();
 
     /* check success of function call */
@@ -262,31 +275,35 @@ ord:    goto ord; /* selector to GDT out of range */
     }
 
 /* see VBE CORE FUNCTIONS VERSION 3.0 Pag.65 - Appendix 1 - VBE Implementation Considerations */
+#define VBE_END_OF_VideoModeList 0xFFFF
 #define VBE_STUB_VideoModeList 0xFFFF
-    struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)VBE_buffer;
+    uint16_t *modeNOPtr = (uint16_t*)rmptr_to_pmptr((void *)vib->VideoModePtr);
+    uint16_t iterator = 0;
+    uint16_t VideoModes[100];
     if(*(uint16_t*)vib->VideoModePtr == VBE_STUB_VideoModeList)
     {
         printk("VBE Core not implemented!\n");
     }
-    printk("Signature: %s\n", &vib->VbeSignature);
-    printk("VBE Ver  :%x\n", vib->VbeVersion);
-    printk("OemString:%s\n", vib->OemStringPtr);
-    printk("Capabilit:%x\n", vib->Capabilities);
-    printk("video modes: ");
-    uint16_t *modeNOPtr = (uint16_t*)vib->VideoModePtr;
-    uint16_t iterator = 0;
-    uint16_t VideoModes[100];
-    while(*(modeNOPtr+iterator) != 0){
-        *(VideoModes+iterator) = *(modeNOPtr+iterator);
-        printk("%x, ", *(VideoModes+iterator));
-        iterator += sizeof(uint16_t);
+    else
+    {
+        printk("Signature: %s\n", &vib->VbeSignature);
+        printk("VBE Ver  :%x\n", vib->VbeVersion);
+        printk("OemString:%s\n", (char *)rmptr_to_pmptr((void *)vib->OemStringPtr));
+        printk("Capabilit:0x%x\n", vib->Capabilities);
+        printk("video modes: ");
+        while(*(modeNOPtr+iterator) != VBE_END_OF_VideoModeList && *(modeNOPtr+iterator) != 0){ /* some bios implementations ends the list incorrectly with 0 */
+            *(VideoModes+iterator) = *(modeNOPtr+iterator);
+            printk("%x, ", *(VideoModes+iterator));
+            iterator += sizeof(uint16_t);
+        }
+        *(VideoModes+iterator) = 0;
+        printk("\n");
+        printk("TotMemory:%d\n", vib->TotalMemory);
+        printk("OemSwRev :%x\n", vib->OemSoftwareRev);
+        printk("OemVenNam:%s\n", (char *)rmptr_to_pmptr((void *)vib->OemVendorNamePtr));
+        printk("OemProdNm:%s\n", (char *)rmptr_to_pmptr((void *)vib->OemProductNamePtr));
+        printk("OemProRev:%s\n", (char *)rmptr_to_pmptr((void *)vib->OemProductRevPtr));
     }
-    printk("\n");
-    printk("TotMemory:%d\n", vib->TotalMemory);
-    printk("OemSwRev :%d\n", vib->OemSoftwareRev);
-    printk("OemVenNam:%s\n", vib->OemVendorNamePtr);
-    printk("OemProdNm:%s\n", vib->OemProductNamePtr);
-    printk("OemProRev:%s\n", vib->OemProductRevPtr);
 
     BSP_wait_polled_input();
 
