@@ -48,7 +48,7 @@ static pthread_mutex_t vesa_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* screen information for the VGA driver
  * standard structures - from RTEMS fb interface
  */
-/*static struct fb_var_screeninfo fb_var;*/
+static struct fb_var_screeninfo fb_var;
 static struct fb_fix_screeninfo fb_fix;
 
 #define VBE_REG_LEN 0x20
@@ -360,7 +360,7 @@ ord:    goto ord; /* selector to GDT out of range */
 
     /* check success of function call */
         printk("returned eax=0x%x\n", parret->reg_eax);
-    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax&0xff00)!=VBE_callSuccessful){
+    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
         printk("Function 00h not supported. eax=0x%x\n", parret->reg_eax);
     }
 
@@ -406,7 +406,7 @@ ord:    goto ord; /* selector to GDT out of range */
     vbe_realmode_if();
     /* check success of function call */
         printk("returned eax=0x%x\n", parret->reg_eax);
-    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax&0xff00)!=VBE_callSuccessful){
+    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
         printk("Function 15h not supported. eax=0x%x\n", parret->reg_eax);
     }
     printk("It takes approximately %d seconds to transfer one EDID block (128 bytes).\n", parret->reg_ebx>>8&0xff);
@@ -425,7 +425,7 @@ ord:    goto ord; /* selector to GDT out of range */
     vbe_realmode_if();
     /* check success of function call */
         printk("returned eax=0x%x\n", parret->reg_eax);
-    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax&0xff00)!=VBE_callSuccessful){
+    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
         printk("Function 15h not supported. eax=0x%x\n", parret->reg_eax);
     }
     
@@ -472,7 +472,7 @@ ord:    goto ord; /* selector to GDT out of range */
     struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_buffer;
 
     while(VideoModes[iterator]!=0){
-        BSP_wait_polled_input();
+        //BSP_wait_polled_input();
         printk("Mode: %x\n", VideoModes[iterator]);
         parret->reg_eax = VBE_RetVBEModInf;
         parret->reg_ecx = VideoModes[iterator];
@@ -500,8 +500,29 @@ ord:    goto ord; /* selector to GDT out of range */
         printk("MemoryModel: %d\n", mib->MemoryModel);
         printk("BankSize: %dKB\n", mib->BankSize);
         printk("NumberOfImagePages: %d\n", mib->NumberOfImagePages);
-        printk("Reserverd: %x", mib->Reserved0);
-        printk("...\nPhysBasePtr: 0x%p -- physical address for flat memory frame buffer\n...\n\n", mib->PhysBasePtr);
+        //BSP_wait_polled_input();
+        printk("RedMaskSize: %x\n", mib->RedMaskSize);
+        printk("RedFieldPosition: %x\n", mib->RedFieldPosition);
+        printk("GreenMaskSize: %x\n", mib->GreenMaskSize);
+        printk("GreenFieldPosition: %x\n", mib->GreenFieldPosition);
+        printk("BlueMaskSize: %x\n", mib->BlueMaskSize);
+        printk("BlueFieldPosition: %x\n", mib->BlueFieldPosition);
+        printk("RsvdMaskSize: %x\n", mib->RsvdMaskSize);
+        printk("RsvdFieldPosition: %x\n", mib->RsvdFieldPosition);
+        printk("DirectColorModeInfo: %x\n", mib->DirectColorModeInfo);
+        printk("PhysBasePtr: 0x%p -- physical address for flat memory frame buffer\n", mib->PhysBasePtr);
+        printk("LinBytesPerScanLine:  %x\n",  mib->LinBytesPerScanLine); 
+        printk("BnkNumberOfImagePages: %x\n", mib->BnkNumberOfImagePages);
+        printk("LinNumberOfImagePages: %x\n", mib->LinNumberOfImagePages);
+        printk("LinRedMaskSize: %x\n",        mib->LinRedMaskSize);
+        printk("LinRedFieldPosition: %x\n",   mib->LinRedFieldPosition);
+        printk("LinGreenMaskSize: %x\n",      mib->LinGreenMaskSize);
+        printk("LinGreenFieldPosition: %x\n", mib->LinGreenFieldPosition);
+        printk("LinBlueMaskSize: %x\n",       mib->LinBlueMaskSize);
+        printk("LinBlueFieldPosition: %x\n",  mib->LinBlueFieldPosition);
+        printk("LinRsvdMaskSize: %x\n",       mib->LinRsvdMaskSize);
+        printk("LinRsvdFieldPosition: %x\n",  mib->LinRsvdFieldPosition);
+        printk("MaxPixelClock: %d\n",         mib->MaxPixelClock);
         iterator += sizeof(uint16_t);
     }
 
@@ -551,13 +572,72 @@ ord:    goto ord; /* selector to GDT out of range */
     parret->reg_edi = (uint32_t)VBE_buffer;
     parret->reg_es = 0x0;
     vbe_realmode_if();
+//    parret->reg_eax = 0x4f; /* fake success */
+    if(parret->reg_eax>>8 == VBE_callFailed)
+    {
+        printk("Requested mode is not available.");
+    }
+    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
+        printk("Call to function 2h failed. eax=0x%x\n", parret->reg_eax);
+    }
 
+    /* fill framebuffer structs with info about selected mode */
+    parret->reg_eax = VBE_RetVBEModInf;
+    parret->reg_ecx = vbe_usedMode;
+    parret->reg_edi = (uint32_t)VBE_buffer;
+    parret->reg_es = 0x0;
+    vbe_realmode_if();
+    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
+        printk("Cannot get mode info anymore. eax=0x%x\n", parret->reg_eax);
+    }
+
+
+    fb_var.xres = mib->XResolution;
+    fb_var.yres = mib->YResolution;
+    printk("mibXRes %d, fbxres %d, mibYRes %d, fbyres %d\n", mib->XResolution, fb_var.xres, mib->YResolution, fb_var.yres);
+    fb_var.bits_per_pixel = mib->BitsPerPixel;
+    printk("mibBPP %d, fbbpp %d\n", mib->BitsPerPixel, fb_var.bits_per_pixel);
+    fb_var.red.offset =      mib->LinRedFieldPosition;
+    fb_var.red.length =      mib->LinRedMaskSize;
+    fb_var.red.msb_right =   0;
+    fb_var.green.offset =    mib->LinGreenFieldPosition;
+    fb_var.green.length =    mib->LinGreenMaskSize;
+    fb_var.green.msb_right = 0;
+    fb_var.blue.offset =     mib->LinBlueFieldPosition;
+    fb_var.blue.length =     mib->LinBlueMaskSize;
+    fb_var.blue.msb_right =  0;
+    fb_var.transp.offset =   mib->LinRsvdFieldPosition;
+    fb_var.transp.length =   mib->LinRsvdMaskSize;
+    fb_var.transp.msb_right =0;
+
+    fb_fix.smem_start  = (char *)mib->PhysBasePtr;
+    fb_fix.line_length = mib->LinBytesPerScanLine;
+    fb_fix.smem_len    = fb_fix.line_length*fb_var.yres;
+    fb_fix.type        = FB_TYPE_PACKED_PIXELS;
+    if(fb_var.bits_per_pixel < 24){
+        fb_fix.visual  = FB_VISUAL_DIRECTCOLOR;
+    }
+    else
+    {
+        fb_fix.visual  = FB_VISUAL_TRUECOLOR;
+    }
+
+    printk("fb_fix and fb_var filled\n");
+    BSP_wait_polled_input();
+
+    /* try to write something to frame buffer */
     uint32_t iter = 0;
-    while(iter<785000){
+    while(iter<fb_fix.smem_len){
         *(((uint16_t *)vbe_physBasePtrOfUsedMode)+iter) = iter;
         iter++;
     }
-
+    /* .bss section is zeroed later, backup fb_fix and fb_var */
+struct fb_fix_screeninfo * pfb_fix = VESA_SPOT;
+struct fb_var_screeninfo * pfb_var = VESA_SPOT+sizeof(struct fb_fix_screeninfo);
+*pfb_fix = fb_fix;
+*pfb_var = fb_var;
+    printk("backuped\n");
+    BSP_wait_polled_input();
 
     vib = (void *) 0;
     mib = (void *) 0;
@@ -596,6 +676,11 @@ frame_buffer_initialize(
         " - " FB_VESA_NAME " frame buffer device!\n");
         rtems_fatal_error_occurred( status );
     }
+    /* restore fb_fix and fb_var */
+    struct fb_fix_screeninfo * pfb_fix = VESA_SPOT;
+    struct fb_var_screeninfo * pfb_var = VESA_SPOT+sizeof(struct fb_fix_screeninfo);
+    fb_fix = *pfb_fix;
+    fb_var = *pfb_var;
 
     return RTEMS_SUCCESSFUL;
 
@@ -624,7 +709,6 @@ frame_buffer_open(
 
         return RTEMS_UNSATISFIED;
     }
-
 
     return RTEMS_SUCCESSFUL;
 
@@ -690,6 +774,20 @@ frame_buffer_write(
   return RTEMS_SUCCESSFUL;
 }
 
+static int get_fix_screen_info( struct fb_fix_screeninfo *info )
+{
+    printk("get_fix_screen_info\n");
+  *info = fb_fix;
+  return 0;
+}
+
+static int get_var_screen_info( struct fb_var_screeninfo *info )
+{
+    printk("get_var_screen_info\n");
+  *info =  fb_var;
+  return 0;
+}
+
 
 /*
  * IOCTL entry point -- This method is called to carry
@@ -705,18 +803,16 @@ frame_buffer_control(
   rtems_libio_ioctl_args_t *args = arg;
 
   printk( FB_VESA_NAME " ioctl called, cmd=%x\n", args->command  );
+    printk("fbxres %d, fbyres %d\n", fb_var.xres, fb_var.yres);
+    printk("fbbpp %d\n", fb_var.bits_per_pixel);
 
   switch( args->command ) {
   case FBIOGET_FSCREENINFO:
-    /* not implemented yet */
-    args->ioctl_return = -1; 
-    return RTEMS_UNSATISFIED;
-    break;
+      args->ioctl_return =  get_fix_screen_info( ( struct fb_fix_screeninfo * ) args->buffer );
+      break;
   case FBIOGET_VSCREENINFO:
-    /* not implemented yet */
-    args->ioctl_return = -1;
-    return RTEMS_UNSATISFIED;
-    break;
+      args->ioctl_return =  get_var_screen_info( ( struct fb_var_screeninfo * ) args->buffer );
+      break;
   case FBIOPUT_VSCREENINFO:
     /* not implemented yet */
     args->ioctl_return = -1;
