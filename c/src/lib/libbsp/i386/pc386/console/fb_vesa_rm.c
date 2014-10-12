@@ -433,22 +433,10 @@ ord:    goto ord; /* selector to GDT out of range */
     /* structure containing parameters */
     /* after call to VBE realmode interface, there will be returned values */
     void *VBE_buffer = (void *)(VBE_BUF_SPOT);
-    struct VBE_registers *parret = (struct VBE_registers *)(VBE_REGS_SPOT);
-
-    parret->reg_eax = VBE_RetVBEConInf;
-    parret->reg_edi = (uint32_t)VBE_buffer;
-    parret->reg_es = 0x0;
-
-    struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)VBE_buffer;
-    /* indicate to graphics bios that VBE 2.0 extended information is desired */
-    strncpy((char *)&vib->VbeSignature, VBE20plus_SIGNATURE, 4*sizeof(size_t));
-
-    vbe_realmode_if();
-
-    /* check success of function call */
-        printk("returned eax=0x%x\n", parret->reg_eax);
-    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
-        printk("Function 00h not supported. eax=0x%x\n", parret->reg_eax);
+    struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)VBE_BUF_SPOT;
+    if(VBEControllerInformation(vib, 0x300) != (VBE_callSuccessful<<8 | VBE_functionSupported))
+    {
+        printk("Function 00h not supported.\n");
     }
 
 /* see VBE CORE FUNCTIONS VERSION 3.0 Pag.65 - Appendix 1 - VBE Implementation Considerations */
@@ -485,35 +473,20 @@ ord:    goto ord; /* selector to GDT out of range */
     BSP_wait_polled_input();
 
     printk("VBE/DDC capabilities:\n");
-    parret->reg_eax = VBE_DisDatCha;
-    parret->reg_ebx = VBEDDC_Capabilities;
-    parret->reg_ecx = 0; /* controller unit nr. */
-    parret->reg_edi = 0;
-    parret->reg_es = 0;
-    vbe_realmode_if();
-    /* check success of function call */
-        printk("returned eax=0x%x\n", parret->reg_eax);
-    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
-        printk("Function 15h not supported. eax=0x%x\n", parret->reg_eax);
+    uint8_t secTransEDIDblk, DDCsupp;
+    if(VBEReportDDCCapabilities(0, &secTransEDIDblk, &DDCsupp) != (VBE_callSuccessful<<8 | VBE_functionSupported))
+    {
+        printk("Function 15h not supported.\n");
     }
-    printk("It takes approximately %d seconds to transfer one EDID block (128 bytes).\n", parret->reg_ebx>>8&0xff);
-    printk("DDC level supported: %x\n",parret->reg_ebx&0xff);
-    
+    printk("It takes approximately %d seconds to transfer one EDID block (128 bytes).\n", secTransEDIDblk);
+    printk("DDC level supported: %x\n", DDCsupp);
 
     BSP_wait_polled_input();
-    printk("Read E-EDID through VBE/DDC\n");
-    //struct EDID *edid = (struct EDID *)VBE_buffer;
-    parret->reg_eax = VBE_DisDatCha;
-    parret->reg_ebx = VBEDDC_ReadEDID;
-    parret->reg_ecx = 0; /* controller unit nr. */
-    parret->reg_edx = 0; /* EDID block nr. */
-    parret->reg_edi = (uint32_t)VBE_buffer;
-    parret->reg_es = 0x0;
-    vbe_realmode_if();
-    /* check success of function call */
-        printk("returned eax=0x%x\n", parret->reg_eax);
-    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
-        printk("Function 15h not supported. eax=0x%x\n", parret->reg_eax);
+    printk("Read (E-)EDID through VBE/DDC\n");
+    union edid edid;
+    if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
+    {
+        printk("Function 15h not supported.\n");
     }
     
     uint8_t checksum = 0;
@@ -556,17 +529,12 @@ ord:    goto ord; /* selector to GDT out of range */
     printk("S2: %s\n", edid1.d4.md.DescriptorData);
 
     iterator = 0;
-    struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_buffer;
+    struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_BUF_SPOT;
 
     while(VideoModes[iterator]!=0){
         //BSP_wait_polled_input();
         printk("Mode: %x\n", VideoModes[iterator]);
-        parret->reg_eax = VBE_RetVBEModInf;
-        parret->reg_ecx = VideoModes[iterator];
-        parret->reg_edi = (uint32_t)VBE_buffer;
-        parret->reg_es = 0x0;
-        vbe_realmode_if();
-        printk("returned eax=0x%x\n", parret->reg_eax);
+        VBEModeInformation(mib, VideoModes[iterator]);
         printk("ModeAttributes: %x\n", mib->ModeAttributes);
         uint16_t required_mode_attributes = VBE_modSupInHWMask | VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
         if((mib->ModeAttributes&required_mode_attributes) == required_mode_attributes)
@@ -618,11 +586,7 @@ ord:    goto ord; /* selector to GDT out of range */
     void * optimalBasePtr = (void *)0,* pbp1024_768 =  (void *)0;
 
     while(VideoModes[iterator]!=0){
-        parret->reg_eax = VBE_RetVBEModInf;
-        parret->reg_ecx = VideoModes[iterator];
-        parret->reg_edi = (uint32_t)VBE_buffer;
-        parret->reg_es = 0x0;
-        vbe_realmode_if();
+        VBEModeInformation(mib, VideoModes[iterator]);
         uint16_t required_mode_attributes = VBE_modSupInHWMask | VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
         if((mib->ModeAttributes&required_mode_attributes) == required_mode_attributes)
         {
@@ -654,28 +618,19 @@ ord:    goto ord; /* selector to GDT out of range */
     BSP_wait_polled_input();
     printk("setting mode: %x\n", vbe_usedMode);
     /* set selected mode */
-    parret->reg_eax = VBE_SetVBEMod;
-    parret->reg_ebx = vbe_usedMode | VBE_linearFlatFrameBufMask;
-    parret->reg_edi = (uint32_t)VBE_buffer;
-    parret->reg_es = 0x0;
-    vbe_realmode_if();
-//    parret->reg_eax = 0x4f; /* fake success */
-    if(parret->reg_eax>>8 == VBE_callFailed)
+    uint16_t reg_ax = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(VBE_BUF_SPOT));
+    if(reg_ax>>8 == VBE_callFailed)
     {
         printk("Requested mode is not available.");
     }
-    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
-        printk("Call to function 2h failed. eax=0x%x\n", parret->reg_eax);
+    if((reg_ax&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8)){
+        printk("Call to function 2h failed. eax=0x%x\n", reg_ax);
     }
 
     /* fill framebuffer structs with info about selected mode */
-    parret->reg_eax = VBE_RetVBEModInf;
-    parret->reg_ecx = vbe_usedMode;
-    parret->reg_edi = (uint32_t)VBE_buffer;
-    parret->reg_es = 0x0;
-    vbe_realmode_if();
-    if((parret->reg_eax&0xff)!=VBE_functionSupported || (parret->reg_eax>>8)!=VBE_callSuccessful){
-        printk("Cannot get mode info anymore. eax=0x%x\n", parret->reg_eax);
+    reg_ax = VBEModeInformation(mib, vbe_usedMode);
+    if((reg_ax&0xff)!=VBE_functionSupported || (reg_ax>>8)!=VBE_callSuccessful){
+        printk("Cannot get mode info anymore. eax=0x%x\n", reg_ax);
     }
 
 
