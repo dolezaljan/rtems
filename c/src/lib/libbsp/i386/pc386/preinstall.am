@@ -144,6 +144,10 @@ $(PROJECT_INCLUDE)/vbe3.h: include/vbe3.h $(PROJECT_INCLUDE)/$(dirstamp)
 	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/vbe3.h
 PREINSTALL_FILES += $(PROJECT_INCLUDE)/vbe3.h
 
+$(PROJECT_INCLUDE)/edid.h: include/edid.h $(PROJECT_INCLUDE)/$(dirstamp)
+	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/edid.h
+PREINSTALL_FILES += $(PROJECT_INCLUDE)/edid.h
+
 else
 endif
 $(PROJECT_INCLUDE)/pcibios.h: ../../i386/shared/pci/pcibios.h $(PROJECT_INCLUDE)/$(dirstamp)

@@ -25,6 +25,7 @@
  */
 
 #include <vbe3.h>
+#include <edid.h>
 
 #include <pthread.h>
 #include <string.h>
@@ -190,93 +191,6 @@ static void vbe_realmode_if(){
     );
 }
 
-    struct DetailedTimingDescriptor{
-        uint16_t PixelClockDIV10000;
-        uint8_t HorizontalActiveLow;
-        uint8_t HorizontalBlankingLow;
-        uint8_t HorizontalBlankingUp : 4;
-        uint8_t HorizontalActiveUp : 4;
-        uint8_t VerticalActiveLow;
-        uint8_t VerticalBlankingLow;
-        uint8_t VerticalBlankingUp : 4;
-        uint8_t VerticalActiveUp : 4;
-        uint8_t HorizontalSyncOffsetLow;
-        uint8_t HorizontalSyncPulseWidthLow;
-        uint8_t VerticalSyncPulseWidthLow : 4;
-        uint8_t VerticalSyncOffsetLow : 4;
-        uint8_t VerticalSyncPulseWidthUp : 2;
-        uint8_t VerticalSyncOffsetUp : 2;
-        uint8_t HorizontalSyncPulseWidthUp : 2;
-        uint8_t HorizontalSyncOffsetUp : 2;
-        uint8_t HorizontalImageSizeLow;
-        uint8_t VerticalImageSizeLow;
-        uint8_t VerticalImageSizeUp : 4;
-        uint8_t HorizontalImageSizeUp : 4;
-        uint8_t HorizontalBorder;
-        uint8_t VerticalBorder;
-        uint8_t Flags;
-    }__attribute__((__packed__));
-    struct MonitorDescriptor{
-        uint16_t Flag0;
-        uint8_t Flag1;
-        uint8_t DataTypeTag;
-        uint8_t Flag2;
-        uint8_t DescriptorData[13];
-    }__attribute__((__packed__));
-
-union DTD_MD {
-    struct DetailedTimingDescriptor dtd;
-    struct MonitorDescriptor md;
-};
-
-struct edid1{
-    uint8_t Header[8];
-/*  VendorProductIdentification */
-    uint16_t IDManufacturerName;
-    uint16_t IDProductCode;
-    uint32_t IDSerialNumber;
-    uint8_t WeekofManufacture;
-    uint8_t YearofManufacture;
-/*  EDIDStructureVersionRevisionLevel */
-    uint8_t Version;
-    uint8_t Revision;
-/*  BasicDisplayParametersFeatures */
-    uint8_t VideoInputDefinition;
-    uint8_t MaxHorizontalImageSize;
-    uint8_t MaxVerticalImageSize;
-    uint8_t DisplayTransferCharacteristic;
-    uint8_t FeatureSupport;
-/*  Color Characteristics */
-    uint8_t RedGreenLowBits;
-    uint8_t BlueWhiteLowBits;
-    uint8_t RedX;
-    uint8_t RedY;
-    uint8_t GreenX;
-    uint8_t GreenY;
-    uint8_t BlueX;
-    uint8_t BlueY;
-    uint8_t WhiteX;
-    uint8_t WhiteY;
-/*  EstablishedStandardTimings */
-    uint8_t EstablishedTimings[3];
-/*  Standard Timing Identification */
-    uint16_t StandardTimingIdentification1;
-    uint16_t StandardTimingIdentification2;
-    uint16_t StandardTimingIdentification3;
-    uint16_t StandardTimingIdentification4;
-    uint16_t StandardTimingIdentification5;
-    uint16_t StandardTimingIdentification6;
-    uint16_t StandardTimingIdentification7;
-    uint16_t StandardTimingIdentification8;
-/*  DetailedTimingDescriptions / MonitorDescriptions */
-    union DTD_MD d1;
-    union DTD_MD d2;
-    union DTD_MD d3;
-    union DTD_MD d4;
-    uint8_t ExtensionFlag;
-    uint8_t Checksum;
-}__attribute__((__packed__));
-
 void *rmptr_to_pmptr(void *ptr){
     uint32_t tmp = (uint32_t)ptr>>12&0xFFFF0;
     tmp += (uint32_t)ptr&0xFFFF;
@@ -430,9 +344,6 @@ nsgdtd: goto nsgdtd;
 ord:    goto ord; /* selector to GDT out of range */
     }
 
-    /* structure containing parameters */
-    /* after call to VBE realmode interface, there will be returned values */
-    void *VBE_buffer = (void *)(VBE_BUF_SPOT);
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)VBE_BUF_SPOT;
     if(VBEControllerInformation(vib, 0x300) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
@@ -488,45 +399,52 @@ ord:    goto ord; /* selector to GDT out of range */
     {
         printk("Function 15h not supported.\n");
     }
-    
+
+    struct edid1 edid1;
     uint8_t checksum = 0;
     iterator = 0;
-    while(iterator<128){
-        switch(iterator){
-            case 0: printk("\nHeader ");break;
-            case 8: printk("\nVendor / Product Identification ");break;
-            case 18: printk("\nEDID Structure Version / Revision Level ");break;
-            case 20: printk("\nBasic Display Parameters / Features ");break;
-            case 35: printk("\nEstablished / Standard Timings ");break;
-            case 54: printk("\nDetailed Timing Descriptions / Monitor Descriptions\n");break;
-            case 72:
-            case 90: 
-            case 108: printk("\n");break;
-            case 126: printk("\nExtension Flag ");break;
-            case 127: printk("\nChecksum ");break;
+/* version of EDID structure */
+    if(edid.edid1.Version == 1) { /* EDID version 1 */
+        while(iterator<sizeof(struct edid1))
+        {
+            checksum += *((uint8_t *)&edid+iterator);
+            iterator++;
         }
-        checksum += *(uint8_t *)(VBE_buffer+iterator);
-        printk("%x ", *(uint8_t *)(VBE_buffer+iterator));
-        iterator++;
+        if(checksum)
+        {
+            /* TODO: try reading EDID again */
+            printk("\nchecksum failed\n");
+        }
+//        edid1 = &edid.edid1;
     }
-    if(checksum)
+    else if(edid.edid2.Version == 2) { /* EDID version 2 */
+        while(iterator<sizeof(struct edid2))
+        {
+            checksum += *((uint8_t *)&edid+iterator);
+            iterator++;
+        }
+        if(!checksum)
+        {
+            printk("EDID v2 checksum OK\n");
+        }
+        printk("EDID v2 not implemented\n");
+    }
+    else
     {
-        printk("\ncheckusm failed\n");
-    }else{
-        printk("\nchecksum OK\n");
+        printk("error reading EDID: no corresponding version\n");
     }
+    
     BSP_wait_polled_input();
-    struct edid1 edid1 = *(struct edid1 *)VBE_buffer;
 
     printk("ID Manufacturer Name: %c%c%c\n",((edid1.IDManufacturerName>>10)&0x1F)+64,((edid1.IDManufacturerName>>5)&0x1F)+64,(edid1.IDManufacturerName&0x1F)+64);
-    if(edid1.d1.md.Flag0 != 0 && (edid1.d1.md.Flag1 != 0 || edid1.d1.md.Flag2 != 0))
+    if(edid1.dtd_md[0].md.Flag0 != 0 && (edid1.dtd_md[0].md.Flag1 != 0 || edid1.dtd_md[0].md.Flag2 != 0))
     {
         printk("Optimized resolution:\n");
-        printk("horizontal pixels: %d\n", edid1.d1.dtd.HorizontalActiveUp<<8|edid1.d1.dtd.HorizontalActiveLow);
-        printk("vertical lines: %d\n", edid1.d1.dtd.VerticalActiveUp<<8|edid1.d1.dtd.VerticalActiveLow);
+        printk("horizontal pixels: %d\n", edid1.dtd_md[0].dtd.HorizontalActiveHigh<<8|edid1.dtd_md[0].dtd.HorizontalActiveLow);
+        printk("vertical lines: %d\n", edid1.dtd_md[0].dtd.VerticalActiveHigh<<8|edid1.dtd_md[0].dtd.VerticalActiveLow);
     }
-    printk("S1: %s\n", edid1.d3.md.DescriptorData);
-    printk("S2: %s\n", edid1.d4.md.DescriptorData);
+    printk("S1: %s\n", edid1.dtd_md[2].md.DescriptorData);
+    printk("S2: %s\n", edid1.dtd_md[3].md.DescriptorData);
 
     iterator = 0;
     struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_BUF_SPOT;
@@ -595,7 +513,7 @@ ord:    goto ord; /* selector to GDT out of range */
                 mode1024_768 = VideoModes[iterator];
                 pbp1024_768 = mib->PhysBasePtr;
             }
-            if(mib->XResolution == (edid1.d1.dtd.HorizontalActiveUp<<8|edid1.d1.dtd.HorizontalActiveLow) && mib->YResolution == (edid1.d1.dtd.VerticalActiveUp<<8|edid1.d1.dtd.VerticalActiveLow)){
+            if(mib->XResolution == (edid1.dtd_md[0].dtd.HorizontalActiveHigh<<8|edid1.dtd_md[0].dtd.HorizontalActiveLow) && mib->YResolution == (edid1.dtd_md[0].dtd.VerticalActiveHigh<<8|edid1.dtd_md[0].dtd.VerticalActiveLow)){
                 optimalMode = VideoModes[iterator];
                 optimalBasePtr = mib->PhysBasePtr;
             }
@@ -632,7 +550,6 @@ ord:    goto ord; /* selector to GDT out of range */
     if((reg_ax&0xff)!=VBE_functionSupported || (reg_ax>>8)!=VBE_callSuccessful){
         printk("Cannot get mode info anymore. eax=0x%x\n", reg_ax);
     }
-
 
     fb_var.xres = mib->XResolution;
     fb_var.yres = mib->YResolution;
