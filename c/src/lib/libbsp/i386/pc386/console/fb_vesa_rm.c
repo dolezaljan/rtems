@@ -69,10 +69,10 @@ struct VBE_registers { /* used for passing parameters, fetching results and pres
 #define VESA_SPOT   0x1000
 #define VBE_BUF_SPOT VESA_SPOT
 #define VBE_BUF_LEN 512
-#define VBE_REGS_SPOT VBE_BUF_SPOT+VBE_BUF_LEN
+#define VBE_REGS_SPOT (VBE_BUF_SPOT+VBE_BUF_LEN)
 /* position for real mode code reallocation to the first MB of RAM */
-#define VESA_FNC_SPOT VBE_REGS_SPOT+VBE_REG_LEN
-#define VBE_STACK_TOP VESA_FNC_SPOT+0x500
+#define VESA_FNC_SPOT (VBE_REGS_SPOT+VBE_REG_LEN)
+#define VBE_STACK_TOP (VESA_FNC_SPOT+0x500)
 
 /******************************
  * VBE_BUF          * 512 B   *
@@ -283,6 +283,95 @@ void *rmptr_to_pmptr(void *ptr){
     return (void *) tmp;
 }
 
+#define VBE_SIGNATURE "VESA"
+#define VBE20plus_SIGNATURE "VBE2"
+
+inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t queriedVBEVersion) {
+    struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)VBE_BUF_SPOT;
+    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    parret->reg_eax = VBE_RetVBEConInf;
+    parret->reg_edi = (uint32_t)VBE_buffer;
+    parret->reg_es = 0x0;
+    /* indicate to graphic's bios that VBE 2.0 extended information is desired */
+    if(queriedVBEVersion >= 0x200)
+    {
+        strncpy((char *)&VBE_buffer->VbeSignature, VBE20plus_SIGNATURE, 4*sizeof(size_t));
+    }
+    vbe_realmode_if();
+    if((parret->reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
+    {
+        *infoBlock = *VBE_buffer;
+    }
+    return (uint16_t)parret->reg_eax;
+}
+
+inline uint16_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t modeNumber){
+    struct VBE_ModeInfoBlock *VBE_buffer = (struct VBE_ModeInfoBlock *)VBE_BUF_SPOT;
+    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    parret->reg_eax = VBE_RetVBEModInf;
+    parret->reg_ecx = modeNumber;
+    parret->reg_edi = (uint32_t)VBE_buffer;
+    parret->reg_es = 0x0;
+    vbe_realmode_if();
+    if((parret->reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
+    {
+        *infoBlock = *VBE_buffer;
+    }
+    return (uint16_t)parret->reg_eax;
+}
+
+inline uint16_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBlock){
+    struct VBE_CRTCInfoBlock *VBE_buffer = (struct VBE_CRTCInfoBlock *)VBE_BUF_SPOT;
+    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    /* copy CRTC */
+    *VBE_buffer = *infoBlock;
+    parret->reg_eax = VBE_SetVBEMod;
+    parret->reg_ebx = modeNumber;
+    parret->reg_edi = (uint32_t)VBE_buffer;
+    parret->reg_es = 0x0;
+    vbe_realmode_if();
+    return (uint16_t)parret->reg_eax;
+}
+
+inline uint16_t VBECurrentMode(uint16_t *modeNumber){
+    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    parret->reg_eax = VBE_RetCurVBEMod;
+    vbe_realmode_if();
+    *modeNumber = (uint16_t)parret->reg_ebx;
+    return (uint16_t)parret->reg_eax;
+}
+
+inline uint16_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t *secondsToTransferEDIDBlock, uint8_t *DDCLevelSupported){
+    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    parret->reg_eax = VBE_DisDatCha;
+    parret->reg_ebx = VBEDDC_Capabilities;
+    parret->reg_ecx = controllerUnitNumber;
+    parret->reg_edi = 0;
+    parret->reg_es = 0;
+    vbe_realmode_if();
+    *secondsToTransferEDIDBlock = (uint8_t)parret->reg_ebx >> 8;
+    *DDCLevelSupported = (uint8_t)parret->reg_ebx;
+    return (uint16_t)parret->reg_eax;
+}
+
+inline uint16_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNumber, union edid *buffer){
+    union edid *VBE_buffer = (union edid *)VBE_BUF_SPOT;
+    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    parret->reg_eax = VBE_DisDatCha;
+    parret->reg_ebx = VBEDDC_ReadEDID;
+    parret->reg_ecx = controllerUnitNumber;
+    parret->reg_edx = EDIDBlockNumber;
+    parret->reg_edi = (uint32_t)VBE_buffer;
+    parret->reg_es = 0x0;
+    vbe_realmode_if();
+    if((parret->reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
+    {
+        *buffer = *VBE_buffer;
+    }
+    return (uint16_t)parret->reg_eax;
+}
+
+
 void vesa_realmode_bootup_init(){
     /* create 'real mode like' segment descriptors, for switching to real mode */
     #define rml_base  0x0
@@ -350,8 +439,6 @@ ord:    goto ord; /* selector to GDT out of range */
     parret->reg_edi = (uint32_t)VBE_buffer;
     parret->reg_es = 0x0;
 
-#define VBE_SIGNATURE "VESA"
-#define VBE20plus_SIGNATURE "VBE2"
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)VBE_buffer;
     /* indicate to graphics bios that VBE 2.0 extended information is desired */
     strncpy((char *)&vib->VbeSignature, VBE20plus_SIGNATURE, 4*sizeof(size_t));
