@@ -370,7 +370,7 @@ ord:    goto ord; /* selector to GDT out of range */
         while(*(modeNOPtr+iterator) != VBE_END_OF_VideoModeList && *(modeNOPtr+iterator) != 0){ /* some bios implementations ends the list incorrectly with 0 */
             *(VideoModes+iterator) = *(modeNOPtr+iterator);
             printk("%x, ", *(VideoModes+iterator));
-            iterator += sizeof(uint16_t);
+            iterator ++;
         }
         *(VideoModes+iterator) = 0;
         printk("\n");
@@ -496,7 +496,7 @@ ord:    goto ord; /* selector to GDT out of range */
         printk("LinRsvdMaskSize: %x\n",       mib->LinRsvdMaskSize);
         printk("LinRsvdFieldPosition: %x\n",  mib->LinRsvdFieldPosition);
         printk("MaxPixelClock: %d\n",         mib->MaxPixelClock);
-        iterator += sizeof(uint16_t);
+        iterator ++;
     }
 
     iterator = 0;
@@ -518,7 +518,7 @@ ord:    goto ord; /* selector to GDT out of range */
                 optimalBasePtr = mib->PhysBasePtr;
             }
         }
-        iterator += sizeof(uint16_t);
+        iterator ++;
     }
     printk("optimalMode: %x, optimBP: 0x%p\n1024x768Mode: %x, BP: 0x%p\n", optimalMode, optimalBasePtr, mode1024_768, pbp1024_768);
 
