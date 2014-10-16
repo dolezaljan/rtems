@@ -534,21 +534,10 @@ ord:    goto ord; /* selector to GDT out of range */
     }
     
     BSP_wait_polled_input();
-    printk("setting mode: %x\n", vbe_usedMode);
-    /* set selected mode */
-    uint16_t reg_ax = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(VBE_BUF_SPOT));
-    if(reg_ax>>8 == VBE_callFailed)
-    {
-        printk("Requested mode is not available.");
-    }
-    if((reg_ax&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8)){
-        printk("Call to function 2h failed. eax=0x%x\n", reg_ax);
-    }
-
     /* fill framebuffer structs with info about selected mode */
-    reg_ax = VBEModeInformation(mib, vbe_usedMode);
-    if((reg_ax&0xff)!=VBE_functionSupported || (reg_ax>>8)!=VBE_callSuccessful){
-        printk("Cannot get mode info anymore. eax=0x%x\n", reg_ax);
+    uint16_t ret_vbe = VBEModeInformation(mib, vbe_usedMode);
+    if((ret_vbe&0xff)!=VBE_functionSupported || (ret_vbe>>8)!=VBE_callSuccessful){
+        printk("Cannot get mode info anymore. eax=0x%x\n", ret_vbe);
     }
 
     fb_var.xres = mib->XResolution;
@@ -582,7 +571,21 @@ ord:    goto ord; /* selector to GDT out of range */
     }
 
     printk("fb_fix and fb_var filled\n");
+    printk("setting mode: %x\n", vbe_usedMode);
     BSP_wait_polled_input();
+    /* set selected mode */
+    ret_vbe = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(VBE_BUF_SPOT));
+//    ret_vbe = 0x4f; /* fake success */
+    if(ret_vbe>>8 == VBE_callFailed)
+    {
+        printk("Requested mode is not available.");
+    	BSP_wait_polled_input();
+    }
+    if((ret_vbe&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8)){
+        printk("Call to function 2h failed. eax=0x%x\n", ret_vbe);
+    	BSP_wait_polled_input();
+    }
+
 
     /* try to write something to frame buffer */
     uint32_t iter = 0;
