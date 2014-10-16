@@ -85,8 +85,6 @@ struct VBE_registers { /* used for passing parameters, fetching results and pres
  * STACK            *         *
  ******************************/
 
-extern int BSP_wait_polled_input(); /* for debugging purposes */
-
 uint16_t vbe_usedMode;
 void *vbe_physBasePtrOfUsedMode;
     
@@ -362,38 +360,13 @@ ord:    goto ord; /* selector to GDT out of range */
     }
     else
     {
-        printk("Signature: %s\n", &vib->VbeSignature);
-        printk("VBE Ver  :%x\n", vib->VbeVersion);
-        printk("OemString:%s\n", (char *)rmptr_to_pmptr((void *)vib->OemStringPtr));
-        printk("Capabilit:0x%x\n", vib->Capabilities);
-        printk("video modes: ");
         while(*(modeNOPtr+iterator) != VBE_END_OF_VideoModeList && *(modeNOPtr+iterator) != 0){ /* some bios implementations ends the list incorrectly with 0 */
             *(VideoModes+iterator) = *(modeNOPtr+iterator);
-            printk("%x, ", *(VideoModes+iterator));
             iterator ++;
         }
         *(VideoModes+iterator) = 0;
-        printk("\n");
-        printk("TotMemory:%d\n", vib->TotalMemory);
-        printk("OemSwRev :%x\n", vib->OemSoftwareRev);
-        printk("OemVenNam:%s\n", (char *)rmptr_to_pmptr((void *)vib->OemVendorNamePtr));
-        printk("OemProdNm:%s\n", (char *)rmptr_to_pmptr((void *)vib->OemProductNamePtr));
-        printk("OemProRev:%s\n", (char *)rmptr_to_pmptr((void *)vib->OemProductRevPtr));
     }
 
-    BSP_wait_polled_input();
-
-    printk("VBE/DDC capabilities:\n");
-    uint8_t secTransEDIDblk, DDCsupp;
-    if(VBEReportDDCCapabilities(0, &secTransEDIDblk, &DDCsupp) != (VBE_callSuccessful<<8 | VBE_functionSupported))
-    {
-        printk("Function 15h not supported.\n");
-    }
-    printk("It takes approximately %d seconds to transfer one EDID block (128 bytes).\n", secTransEDIDblk);
-    printk("DDC level supported: %x\n", DDCsupp);
-
-    BSP_wait_polled_input();
-    printk("Read (E-)EDID through VBE/DDC\n");
     union edid edid;
     if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
@@ -413,7 +386,7 @@ ord:    goto ord; /* selector to GDT out of range */
         if(checksum)
         {
             /* TODO: try reading EDID again */
-            printk("\nchecksum failed\n");
+            printk("\nEDID v1 checksum failed\n");
         }
 //        edid1 = &edid.edid1;
     }
@@ -433,72 +406,8 @@ ord:    goto ord; /* selector to GDT out of range */
     {
         printk("error reading EDID: no corresponding version\n");
     }
-    
-    BSP_wait_polled_input();
 
-    printk("ID Manufacturer Name: %c%c%c\n",((edid1.IDManufacturerName>>10)&0x1F)+64,((edid1.IDManufacturerName>>5)&0x1F)+64,(edid1.IDManufacturerName&0x1F)+64);
-    if(edid1.dtd_md[0].md.Flag0 != 0 && (edid1.dtd_md[0].md.Flag1 != 0 || edid1.dtd_md[0].md.Flag2 != 0))
-    {
-        printk("Optimized resolution:\n");
-        printk("horizontal pixels: %d\n", edid1.dtd_md[0].dtd.HorizontalActiveHigh<<8|edid1.dtd_md[0].dtd.HorizontalActiveLow);
-        printk("vertical lines: %d\n", edid1.dtd_md[0].dtd.VerticalActiveHigh<<8|edid1.dtd_md[0].dtd.VerticalActiveLow);
-    }
-    printk("S1: %s\n", edid1.dtd_md[2].md.DescriptorData);
-    printk("S2: %s\n", edid1.dtd_md[3].md.DescriptorData);
-
-    iterator = 0;
     struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_BUF_SPOT;
-
-    while(VideoModes[iterator]!=0){
-        //BSP_wait_polled_input();
-        printk("Mode: %x\n", VideoModes[iterator]);
-        VBEModeInformation(mib, VideoModes[iterator]);
-        printk("ModeAttributes: %x\n", mib->ModeAttributes);
-        uint16_t required_mode_attributes = VBE_modSupInHWMask | VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
-        if((mib->ModeAttributes&required_mode_attributes) == required_mode_attributes)
-        {
-            printk("ModeAttributes Satisfied\n");
-        }else{
-            printk("ModeAttributes UNSATISFIED\n");
-        }
-        printk("WinAAttributes: %x, WinBAttributes: %x\n", mib->WinAAttributes, mib->WinBAttributes);
-        printk("WinGranularity: %x, WinSize: %x\n", mib->WinGranularity, mib->WinSize);
-        printk("WinASegment: %x, WinBSegment: %x\n", mib->WinASegment, mib->WinBSegment);
-        printk("WinFuncPtr: %p, BytesPerScanLine: %x\n", mib->WinFuncPtr, mib->BytesPerScanLine);
-        printk("XResolution: %d, YResolution: %d\n", mib->XResolution, mib->YResolution);
-        printk("XCharSize: %dpx, YCharSize: %dpx\n", mib->XCharSize, mib->YCharSize);
-        printk("NumberOfPlanes: %d\n", mib->NumberOfPlanes);
-        printk("BitsPerPixel: %d\n", mib->BitsPerPixel);
-        printk("NumberOfBanks: %d\n", mib->NumberOfBanks);
-        printk("MemoryModel: %d\n", mib->MemoryModel);
-        printk("BankSize: %dKB\n", mib->BankSize);
-        printk("NumberOfImagePages: %d\n", mib->NumberOfImagePages);
-        //BSP_wait_polled_input();
-        printk("RedMaskSize: %x\n", mib->RedMaskSize);
-        printk("RedFieldPosition: %x\n", mib->RedFieldPosition);
-        printk("GreenMaskSize: %x\n", mib->GreenMaskSize);
-        printk("GreenFieldPosition: %x\n", mib->GreenFieldPosition);
-        printk("BlueMaskSize: %x\n", mib->BlueMaskSize);
-        printk("BlueFieldPosition: %x\n", mib->BlueFieldPosition);
-        printk("RsvdMaskSize: %x\n", mib->RsvdMaskSize);
-        printk("RsvdFieldPosition: %x\n", mib->RsvdFieldPosition);
-        printk("DirectColorModeInfo: %x\n", mib->DirectColorModeInfo);
-        printk("PhysBasePtr: 0x%p -- physical address for flat memory frame buffer\n", mib->PhysBasePtr);
-        printk("LinBytesPerScanLine:  %x\n",  mib->LinBytesPerScanLine); 
-        printk("BnkNumberOfImagePages: %x\n", mib->BnkNumberOfImagePages);
-        printk("LinNumberOfImagePages: %x\n", mib->LinNumberOfImagePages);
-        printk("LinRedMaskSize: %x\n",        mib->LinRedMaskSize);
-        printk("LinRedFieldPosition: %x\n",   mib->LinRedFieldPosition);
-        printk("LinGreenMaskSize: %x\n",      mib->LinGreenMaskSize);
-        printk("LinGreenFieldPosition: %x\n", mib->LinGreenFieldPosition);
-        printk("LinBlueMaskSize: %x\n",       mib->LinBlueMaskSize);
-        printk("LinBlueFieldPosition: %x\n",  mib->LinBlueFieldPosition);
-        printk("LinRsvdMaskSize: %x\n",       mib->LinRsvdMaskSize);
-        printk("LinRsvdFieldPosition: %x\n",  mib->LinRsvdFieldPosition);
-        printk("MaxPixelClock: %d\n",         mib->MaxPixelClock);
-        iterator ++;
-    }
-
     iterator = 0;
     uint16_t optimalMode = 0, mode1024_768 = 0;
     void * optimalBasePtr = (void *)0,* pbp1024_768 =  (void *)0;
@@ -520,7 +429,6 @@ ord:    goto ord; /* selector to GDT out of range */
         }
         iterator ++;
     }
-    printk("optimalMode: %x, optimBP: 0x%p\n1024x768Mode: %x, BP: 0x%p\n", optimalMode, optimalBasePtr, mode1024_768, pbp1024_768);
 
     /* dummy mode chooser */
     if(optimalMode!=0 && optimalBasePtr!=0){
@@ -533,18 +441,15 @@ ord:    goto ord; /* selector to GDT out of range */
         vbe_physBasePtrOfUsedMode = pbp1024_768;
     }
     
-    BSP_wait_polled_input();
     /* fill framebuffer structs with info about selected mode */
     uint16_t ret_vbe = VBEModeInformation(mib, vbe_usedMode);
     if((ret_vbe&0xff)!=VBE_functionSupported || (ret_vbe>>8)!=VBE_callSuccessful){
-        printk("Cannot get mode info anymore. eax=0x%x\n", ret_vbe);
+        printk("Cannot get mode info anymore. ax=0x%x\n", ret_vbe);
     }
 
     fb_var.xres = mib->XResolution;
     fb_var.yres = mib->YResolution;
-    printk("mibXRes %d, fbxres %d, mibYRes %d, fbyres %d\n", mib->XResolution, fb_var.xres, mib->YResolution, fb_var.yres);
     fb_var.bits_per_pixel = mib->BitsPerPixel;
-    printk("mibBPP %d, fbbpp %d\n", mib->BitsPerPixel, fb_var.bits_per_pixel);
     fb_var.red.offset =      mib->LinRedFieldPosition;
     fb_var.red.length =      mib->LinRedMaskSize;
     fb_var.red.msb_right =   0;
@@ -567,39 +472,24 @@ ord:    goto ord; /* selector to GDT out of range */
     }
     else
     {
-        fb_fix.visual  = FB_VISUAL_TRUECOLOR;
+      fb_fix.visual  = FB_VISUAL_TRUECOLOR;
     }
 
-    printk("fb_fix and fb_var filled\n");
-    printk("setting mode: %x\n", vbe_usedMode);
-    BSP_wait_polled_input();
     /* set selected mode */
     ret_vbe = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(VBE_BUF_SPOT));
-//    ret_vbe = 0x4f; /* fake success */
     if(ret_vbe>>8 == VBE_callFailed)
     {
         printk("Requested mode is not available.");
-    	BSP_wait_polled_input();
     }
     if((ret_vbe&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8)){
-        printk("Call to function 2h failed. eax=0x%x\n", ret_vbe);
-    	BSP_wait_polled_input();
+        printk("Call to function 2h failed. ax=0x%x\n", ret_vbe);
     }
 
-
-    /* try to write something to frame buffer */
-    uint32_t iter = 0;
-    while(iter<fb_fix.smem_len){
-        *(((uint16_t *)vbe_physBasePtrOfUsedMode)+iter) = iter;
-        iter++;
-    }
     /* .bss section is zeroed later, backup fb_fix and fb_var */
 struct fb_fix_screeninfo * pfb_fix = VESA_SPOT;
 struct fb_var_screeninfo * pfb_var = VESA_SPOT+sizeof(struct fb_fix_screeninfo);
 *pfb_fix = fb_fix;
 *pfb_var = fb_var;
-    printk("backuped\n");
-    BSP_wait_polled_input();
 
     vib = (void *) 0;
     mib = (void *) 0;
