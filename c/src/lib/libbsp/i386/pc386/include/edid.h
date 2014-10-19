@@ -10,7 +10,7 @@
  * edid.h  - This file contains definitions for constants related to
  *           VESA Extended Display Identification Data.
  *          More information can be found at
- *	<http://www.vesa.org/vesa-standards/free-standards/>
+ *      <http://www.vesa.org/vesa-standards/free-standards/>
  *          VESA public standards may be found at
  *      <http://www.vesa.org/wp-content/uploads/2010/12/thankspublic.htm>
  *
@@ -43,10 +43,10 @@ extern "C" {
 
 /* Video Input Definition */
 /* Analog Interface Data Format - Signal Level Standard */
-#define EDIDx_SLS_0700_0300_1000Vpp             0x0;
-#define EDIDx_SLS_0714_0286_1000Vpp             0x1;
-#define EDIDx_SLS_1000_0400_1400Vpp             0x2;
-#define EDIDx_SLS_0700_0000_0700Vpp             0x3;
+#define EDIDx_SLS_0700_0300_1000Vpp             0x0
+#define EDIDx_SLS_0714_0286_1000Vpp             0x1
+#define EDIDx_SLS_1000_0400_1400Vpp             0x2
+#define EDIDx_SLS_0700_0000_0700Vpp             0x3
 
 struct DetailedTimingDescriptor{
     uint16_t PixelClock_div10000;
@@ -99,22 +99,22 @@ struct ColorPointData {
 /* Basic Display Parameters */
     /* Feature Support */
         /* analog - Display Color Type */
-#define EDID_DisplayType_Monochrome         0;
-#define EDID_DisplayType_RGBcolor           1;
-#define EDID_DisplayType_nonRGBcolor        2;
-#define EDID_DisplayType_undef              3;
+#define EDID_DisplayType_Monochrome         0
+#define EDID_DisplayType_RGBcolor           1
+#define EDID_DisplayType_nonRGBcolor        2
+#define EDID_DisplayType_undef              3
         /* digital - Supported Color Encoding Formats */
-#define EDID_DisplayType_RGB444                 0;
-#define EDID_DisplayType_RGB444YCrCb444         1;
-#define EDID_DisplayType_RGB444YCrCb422         2;
-#define EDID_DisplayType_RGB444YCrCb444YCrCb422 3;
+#define EDID_DisplayType_RGB444                 0
+#define EDID_DisplayType_RGB444YCrCb444         1
+#define EDID_DisplayType_RGB444YCrCb422         2
+#define EDID_DisplayType_RGB444YCrCb444YCrCb422 3
 
 /* Monitor Descriptor - Data Type Tag */
-#define EDID_DTT_MonitorSerialNumber        0xFF;
+#define EDID_DTT_MonitorSerialNumber        0xFF
 
-#define EDID_DTT_ASCIIString                0xFE;
+#define EDID_DTT_ASCIIString                0xFE
 
-#define EDID_DTT_MonitorRangeLimits         0xFD;
+#define EDID_DTT_MonitorRangeLimits         0xFD
 struct MonitorRangeLimits {
     uint8_t MinVerticalRateInHz;
     uint8_t MaxVerticalRateInHz;
@@ -125,23 +125,23 @@ struct MonitorRangeLimits {
     uint8_t GTFStandard[8];
 }__attribute__((__packed__));
 
-#define EDID_DTT_MonitorName                0xFC;
+#define EDID_DTT_MonitorName                0xFC
 
-#define EDID_DTT_AdditionalColorPointData   0xFB;
+#define EDID_DTT_AdditionalColorPointData   0xFB
 
-#define EDID_DTT_AdditionalSTI              0xFA; /* Standard Timing Identification */
+#define EDID_DTT_AdditionalSTI              0xFA /* Standard Timing Identification */
 
-#define EDID_DTT_DisplayColorManagement     0xF9;
+#define EDID_DTT_DisplayColorManagement     0xF9
 
-#define EDID_DTT_CVT3ByteTimingCodes        0xF8;
-#define EDID_CVT_AspectRatio_4_3            0;
-#define EDID_CVT_AspectRatio_16_9           1;
-#define EDID_CVT_AspectRatio_16_10          2;
-#define EDID_CVT_AspectRatio_15_9           3;
-#define EDID_CVT_PrefVertRate50Hz           0;
-#define EDID_CVT_PrefVertRate60Hz           1;
-#define EDID_CVT_PrefVertRate75Hz           2;
-#define EDID_CVT_PrefVertRate85Hz           3;
+#define EDID_DTT_CVT3ByteTimingCodes        0xF8
+#define EDID_CVT_AspectRatio_4_3            0
+#define EDID_CVT_AspectRatio_16_9           1
+#define EDID_CVT_AspectRatio_16_10          2
+#define EDID_CVT_AspectRatio_15_9           3
+#define EDID_CVT_PrefVertRate50Hz           0
+#define EDID_CVT_PrefVertRate60Hz           1
+#define EDID_CVT_PrefVertRate75Hz           2
+#define EDID_CVT_PrefVertRate85Hz           3
 struct CVT3ByteCodeDescriptor {
     uint8_t AddressableLinesLow;
     uint8_t Reserved0               : 2;
@@ -161,7 +161,7 @@ struct CVTTimingCodes3B {
     struct CVT3ByteCodeDescriptor cvt[4];
 }__attribute__((__packed__));
 
-#define EDID_DTT_EstablishedTimingsIII      0xF7;
+#define EDID_DTT_EstablishedTimingsIII      0xF7
 struct EstablishedTimingsIII {
     uint8_t RevisionNumber;
 
@@ -219,7 +219,7 @@ struct EstablishedTimingsIII {
     uint8_t EST_Reserved1[6];
 }__attribute__((__packed__));
 
-#define EDID_DTT_DescriptorSpaceUnused      0x10;
+#define EDID_DTT_DescriptorSpaceUnused      0x10
 
 struct MonitorDescriptor {
     uint16_t Flag0;
@@ -234,11 +234,11 @@ union DTD_MD {
     struct MonitorDescriptor md;
 };
 
-#define EDID_STI_DescriptorUnused           0x0101;
-#define EDID_STI_AspectRatio_16_10          0;
-#define EDID_STI_AspectRatio_4_3            1;
-#define EDID_STI_AspectRatio_5_4            2;
-#define EDID_STI_AspectRatio_16_9           3;
+#define EDID_STI_DescriptorUnused           0x0101
+#define EDID_STI_AspectRatio_16_10          0
+#define EDID_STI_AspectRatio_4_3            1
+#define EDID_STI_AspectRatio_5_4            2
+#define EDID_STI_AspectRatio_16_9           3
 struct StandardTimingIdentification {
     uint8_t HorizontalActivePixels;
     uint8_t ImageAspectRatio    : 2;
@@ -262,22 +262,22 @@ struct VID_Digital {
 }__attribute__((__packed__));
 
 /* Color Bit Depths */
-#define CBD_undef               0x0;
-#define CBD_6bPerPrimaryColor   0x1;
-#define CBD_8bPerPrimaryColor   0x2;
-#define CBD_10bPerPrimaryColor  0x3;
-#define CBD_12bPerPrimaryColor  0x4;
-#define CBD_14bPerPrimaryColor  0x5;
-#define CBD_16bPerPrimaryColor  0x6;
-#define CBD_reserved            0x7;
+#define CBD_undef               0x0
+#define CBD_6bPerPrimaryColor   0x1
+#define CBD_8bPerPrimaryColor   0x2
+#define CBD_10bPerPrimaryColor  0x3
+#define CBD_12bPerPrimaryColor  0x4
+#define CBD_14bPerPrimaryColor  0x5
+#define CBD_16bPerPrimaryColor  0x6
+#define CBD_reserved            0x7
 
 /* Digital Video Standard Supported */
-#define DVS_undef               0x0;
-#define DVS_DVI                 0x1;
-#define DVS_HDMI-a              0x2;
-#define DVS_HDMI-b              0x3;
-#define DVS_MDDI                0x4;
-#define DVS_DiplayPort          0x5;
+#define DVS_undef               0x0
+#define DVS_DVI                 0x1
+#define DVS_HDMI-a              0x2
+#define DVS_HDMI-b              0x3
+#define DVS_MDDI                0x4
+#define DVS_DiplayPort          0x5
 
 union VideoInputDefinition {
     struct VID_Analog analog;
@@ -608,137 +608,137 @@ struct TimingCodeFormat4B {
     /* see struct DetailedTimingDescriptor */
 
 /* Physical Connector Types (Default/SecondaryPhysicalInterface) */
-#define EDID2_PCT_None                          0x0;
-#define EDID2_PCT_BNC                           0x1;
-#define EDID2_PCT_15pinVGA                      0x2;
-#define EDID2_PCT_13w3                          0x3;
-#define EDID2_PCT_VESAEVC                       0x4;
-#define EDID2_PCT_VESAPDD                       0x5;
-#define EDID2_PCT_Microribbon                   0x6;
-#define EDID2_PCT_IEEE1394                      0x7;
-#define EDID2_PCT_VESAFPDI2                     0x8;
+#define EDID2_PCT_None                          0x0
+#define EDID2_PCT_BNC                           0x1
+#define EDID2_PCT_15pinVGA                      0x2
+#define EDID2_PCT_13w3                          0x3
+#define EDID2_PCT_VESAEVC                       0x4
+#define EDID2_PCT_VESAPDD                       0x5
+#define EDID2_PCT_Microribbon                   0x6
+#define EDID2_PCT_IEEE1394                      0x7
+#define EDID2_PCT_VESAFPDI2                     0x8
 /* Reserved 0x9-0xE */
-#define EDID2_PCT_Nonstandard                   0xF;
+#define EDID2_PCT_Nonstandard                   0xF
 
 /* Video Interface Type */
-#define EDID2_VIT_None                          0x0;
-#define EDID2_VIT_Analog                        0x1;
-#define EDID2_VIT_Analogwsampledpixelclock      0x2;
-#define EDID2_VIT_TMDS                          0x3; /* Transition Minimized Differential Signaling */
-#define EDID2_VIT_IEEE1394_1995                 0x4;
-#define EDID2_VIT_LVDS                          0x5;
-#define EDID2_VIT_Parallel                      0x6;
+#define EDID2_VIT_None                          0x0
+#define EDID2_VIT_Analog                        0x1
+#define EDID2_VIT_Analogwsampledpixelclock      0x2
+#define EDID2_VIT_TMDS                          0x3 /* Transition Minimized Differential Signaling */
+#define EDID2_VIT_IEEE1394_1995                 0x4
+#define EDID2_VIT_LVDS                          0x5
+#define EDID2_VIT_Parallel                      0x6
 /* Reserved 0x7-0xF */
 
 /* digital interface data format */
 /* ... */
-#define EDID2_didf_RGB_STN-DD_8BitOver8Bit      0x15;
-#define EDID2_didf_RGB_STN-DD_12BitOver12Bit    0x19;
+#define EDID2_didf_RGB_STN-DD_8BitOver8Bit      0x15
+#define EDID2_didf_RGB_STN-DD_12BitOver12Bit    0x19
 /* ... */
-#define EDID2_didf_MSBAlignedRGBTFT24Bit        0x24;
+#define EDID2_didf_MSBAlignedRGBTFT24Bit        0x24
 /* ... */
 
 /* Color/Luminance Encoding Description */
         /* nibbles of byte 0 - color encodings */
-#define EDID2_CLE_CE_Monochrome                 0x0;
-#define EDID2_CLE_CE_RGBadd                     0x1;
-#define EDID2_CLE_CE_CMYsub                     0x2;
-#define EDID2_CLE_CE_CMYKsub                    0x3;
-#define EDID2_CLE_CE_YC_NTSC                    0x4;
-#define EDID2_CLE_CE_YC_PAL                     0x5;
-#define EDID2_CLE_CE_YC_SECAM                   0x6;
-#define EDID2_CLE_CE_YIQ_NTSC                   0x7;
-#define EDID2_CLE_CE_YIQ_PAL                    0x8;
-#define EDID2_CLE_CE_YIQ_SECAM                  0x9;
-#define EDID2_CLE_CE_YCrCb                      0xA;
-#define EDID2_CLE_CE_YPrPb                      0xB;
-#define EDID2_CLE_CE_XYZ                        0xC;
-#define EDID2_CLE_CE_CIELuv                     0xD;
-#define EDID2_CLE_CE_CIELab                     0xE;
-#define EDID2_CLE_CE_Digital_ATSC               0xF;
+#define EDID2_CLE_CE_Monochrome                 0x0
+#define EDID2_CLE_CE_RGBadd                     0x1
+#define EDID2_CLE_CE_CMYsub                     0x2
+#define EDID2_CLE_CE_CMYKsub                    0x3
+#define EDID2_CLE_CE_YC_NTSC                    0x4
+#define EDID2_CLE_CE_YC_PAL                     0x5
+#define EDID2_CLE_CE_YC_SECAM                   0x6
+#define EDID2_CLE_CE_YIQ_NTSC                   0x7
+#define EDID2_CLE_CE_YIQ_PAL                    0x8
+#define EDID2_CLE_CE_YIQ_SECAM                  0x9
+#define EDID2_CLE_CE_YCrCb                      0xA
+#define EDID2_CLE_CE_YPrPb                      0xB
+#define EDID2_CLE_CE_XYZ                        0xC
+#define EDID2_CLE_CE_CIELuv                     0xD
+#define EDID2_CLE_CE_CIELab                     0xE
+#define EDID2_CLE_CE_Digital_ATSC               0xF
 
 /* Display Device Description; T-type, ST-subtype */
-#define EDID2_DDD_T_CRT         0x0; /* Cathode Ray Tube */
-#define EDID2_DDD_ST_CRT_Monochrome             0x0;
-#define EDID2_DDD_ST_CRT_ShadowmaskColor        0x1;
-#define EDID2_DDD_ST_CRT_BeamIndexColor         0x2;
-#define EDID2_DDD_ST_CRT_BeamPenetrationColor   0x3;
+#define EDID2_DDD_T_CRT         0x0 /* Cathode Ray Tube */
+#define EDID2_DDD_ST_CRT_Monochrome             0x0
+#define EDID2_DDD_ST_CRT_ShadowmaskColor        0x1
+#define EDID2_DDD_ST_CRT_BeamIndexColor         0x2
+#define EDID2_DDD_ST_CRT_BeamPenetrationColor   0x3
 
-#define EDID2_DDD_T_LCD         0x1; /* Liquid Crystal Display */
-#define EDID2_DDD_ST_LCD_STN                    0x0;
-#define EDID2_DDD_ST_LCD_DSTN                   0x1;
-#define EDID2_DDD_ST_LCD_FLCD                   0x2;
-#define EDID2_DDD_ST_LCD_TFTconv                0x3;
-#define EDID2_DDD_ST_LCD_TFTinplaneswtch        0x4;
-#define EDID2_DDD_ST_LCD_PDLCD                  0x5;
-#define EDID2_DDD_ST_LCD_PSCLCD                 0x6;
-#define EDID2_DDD_ST_LCD_PALCD                  0x7;
+#define EDID2_DDD_T_LCD         0x1 /* Liquid Crystal Display */
+#define EDID2_DDD_ST_LCD_STN                    0x0
+#define EDID2_DDD_ST_LCD_DSTN                   0x1
+#define EDID2_DDD_ST_LCD_FLCD                   0x2
+#define EDID2_DDD_ST_LCD_TFTconv                0x3
+#define EDID2_DDD_ST_LCD_TFTinplaneswtch        0x4
+#define EDID2_DDD_ST_LCD_PDLCD                  0x5
+#define EDID2_DDD_ST_LCD_PSCLCD                 0x6
+#define EDID2_DDD_ST_LCD_PALCD                  0x7
 
-#define EDID2_DDD_T_EL          0x2; /* Electroluminiscent Displ */
-#define EDID2_DDD_ST_EL_ACThin                  0x0;
-#define EDID2_DDD_ST_EL_ACThick                 0x1;
-#define EDID2_DDD_ST_EL_DCThin                  0x2;
-#define EDID2_DDD_ST_EL_DCThick                 0x3;
+#define EDID2_DDD_T_EL          0x2 /* Electroluminiscent Displ */
+#define EDID2_DDD_ST_EL_ACThin                  0x0
+#define EDID2_DDD_ST_EL_ACThick                 0x1
+#define EDID2_DDD_ST_EL_DCThin                  0x2
+#define EDID2_DDD_ST_EL_DCThick                 0x3
 
-#define EDID2_DDD_T_PDP         0x3; /* Plasma Display Panel */
-#define EDID2_DDD_ST_PDP_AC                     0x0;
-#define EDID2_DDD_ST_PDP_DC                     0x1;
+#define EDID2_DDD_T_PDP         0x3 /* Plasma Display Panel */
+#define EDID2_DDD_ST_PDP_AC                     0x0
+#define EDID2_DDD_ST_PDP_DC                     0x1
 
-#define EDID2_DDD_T_FED         0x4; /* Field Emission Displays */
-#define EDID2_DDD_ST_FED_TBD                    0x0;
+#define EDID2_DDD_T_FED         0x4 /* Field Emission Displays */
+#define EDID2_DDD_ST_FED_TBD                    0x0
 
-#define EDID2_DDD_T_LED         0x5; /* Light Emitting Diode */
-#define EDID2_DDD_ST_LED_TBD                    0x0;
+#define EDID2_DDD_T_LED         0x5 /* Light Emitting Diode */
+#define EDID2_DDD_ST_LED_TBD                    0x0
 
-#define EDID2_DDD_T_IRD         0x6; /* Integrated Reflective Display */
-#define EDID2_DDD_ST_IRD_1Chip                  0x0;
-#define EDID2_DDD_ST_IRD_2Chip                  0x1;
-#define EDID2_DDD_ST_IRD_3Chip                  0x2;
+#define EDID2_DDD_T_IRD         0x6 /* Integrated Reflective Display */
+#define EDID2_DDD_ST_IRD_1Chip                  0x0
+#define EDID2_DDD_ST_IRD_2Chip                  0x1
+#define EDID2_DDD_ST_IRD_3Chip                  0x2
 
     /* Types 0x7-0xF Reserved */
 
 /* MajorDisplayCharacteristics */
-#define EDID2_MDC_C_Color               1;
-#define EDID2_MDC_C_Mono                0;
-#define EDID2_MDC_SO_notscanned         0x0;
-#define EDID2_MDC_SO_fastLRslowTB       0x1;
-#define EDID2_MDC_SO_fastTBslowLR       0x2;
-#define EDID2_MDC_SO_fastTBslowRL       0x3;
-#define EDID2_MDC_DB_NonTransp          0;
-#define EDID2_MDC_DB_Transparent        1;
-#define EDID2_MDC_PI_Large              0x0;
-#define EDID2_MDC_PI_Desktop            0x1;
-#define EDID2_MDC_PI_Eyepiece           0x2;
+#define EDID2_MDC_C_Color               1
+#define EDID2_MDC_C_Mono                0
+#define EDID2_MDC_SO_notscanned         0x0
+#define EDID2_MDC_SO_fastLRslowTB       0x1
+#define EDID2_MDC_SO_fastTBslowLR       0x2
+#define EDID2_MDC_SO_fastTBslowRL       0x3
+#define EDID2_MDC_DB_NonTransp          0
+#define EDID2_MDC_DB_Transparent        1
+#define EDID2_MDC_PI_Large              0x0
+#define EDID2_MDC_PI_Desktop            0x1
+#define EDID2_MDC_PI_Eyepiece           0x2
 
 /* FeaturesSupport */
         /* byte 0 - refer to VESA DPMS specification */
             /* Stereo Support */
-#define EDID2_FS_SS_nodirectstereo      0x0;
-#define EDID2_FS_SS_fieldseqstereo      0x1;
-#define EDID2_FS_SS_directviewcolumnilv 0x2;
-#define EDID2_FS_SS_directviewlineilv   0x3;
+#define EDID2_FS_SS_nodirectstereo      0x0
+#define EDID2_FS_SS_fieldseqstereo      0x1
+#define EDID2_FS_SS_directviewcolumnilv 0x2
+#define EDID2_FS_SS_directviewlineilv   0x3
         /* byte 1 */
             /* VideoInputValues */
-#define EDID2_FX_VI_None                0x0;
-#define EDID2_FX_VI_AnalogYCconnEVC     0x1;
-#define EDID2_FX_VI_USBCam              0x2;
-#define EDID2_FX_VI_IEEE1394Cam         0x3;
+#define EDID2_FX_VI_None                0x0
+#define EDID2_FX_VI_AnalogYCconnEVC     0x1
+#define EDID2_FX_VI_USBCam              0x2
+#define EDID2_FX_VI_IEEE1394Cam         0x3
             /* AudioOutputInterfaceValues */
-#define EDID2_FS_AOI_None               0x0;
-#define EDID2_FS_AOI_Analog             0x1;
-#define EDID2_FS_AOI_USB                0x2;
-#define EDID2_FS_AOI_IEEE1394           0x3;
+#define EDID2_FS_AOI_None               0x0
+#define EDID2_FS_AOI_Analog             0x1
+#define EDID2_FS_AOI_USB                0x2
+#define EDID2_FS_AOI_IEEE1394           0x3
             /* Audio Input Interface Values */
-#define EDID2_FS_AII_None               0x0;
-#define EDID2_FS_AII_Analog             0x1;
-#define EDID2_FS_AII_USB                0x2;
-#define EDID2_FS_AII_IEEE1394           0x3;
+#define EDID2_FS_AII_None               0x0
+#define EDID2_FS_AII_Analog             0x1
+#define EDID2_FS_AII_USB                0x2
+#define EDID2_FS_AII_IEEE1394           0x3
 
 /* GTFSupportInformation values */
-#define EDID2_GTFSI_nosupport       0x0;
-#define EDID2_GTFSI_stdCRTparams    0x1;
-#define EDID2_GTFSI_defaultTBD      0x2;
-#define EDID2_GTFSI_custom          0xF;
+#define EDID2_GTFSI_nosupport       0x0
+#define EDID2_GTFSI_stdCRTparams    0x1
+#define EDID2_GTFSI_defaultTBD      0x2
+#define EDID2_GTFSI_custom          0xF
 
 
 union edid {
