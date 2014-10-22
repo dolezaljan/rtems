@@ -340,6 +340,170 @@ struct modeParams {
     uint8_t bpp;
 };
 
+/* finds mode in 'modeList' of 'listLength' length according to resolution
+    given in 'searchedResolution'. If bpp is given in that struct as well
+    mode with such color depth and resolution is searched for. Otherwise bpp
+    has to be zero. Mode number found is returned and also filled into
+    'searchedResolution'. bpp is also filled into 'searchedResolution' if it
+    was 0 before call. */
+uint16_t findModeByResolution(struct modeParams *modeList, uint8_t listLength, struct modeParams *searchedResolution) {
+    uint8_t i = 0;
+    while(modeList[i].resX != searchedResolution->resX && i < listLength) {
+        i++;
+    }
+    while(modeList[i].resY != searchedResolution->resY && i < listLength) {
+        i++;
+    }
+    if(modeList[i].resX == searchedResolution->resX) {
+        if(searchedResolution->bpp != 0) {
+            while(modeList[i].bpp != searchedResolution->bpp && i < listLength) {
+                i++;
+            }
+            if(modeList[i].resX == searchedResolution->resX && modeList[i].resY == searchedResolution->resY) {
+                searchedResolution->bpp = modeList[i].bpp;
+                searchedResolution->modeNumber = modeList[i].modeNumber;
+                return modeList[i].modeNumber;
+            }
+        }
+        else
+        {
+            searchedResolution->bpp = modeList[i].bpp;
+            searchedResolution->modeNumber = modeList[i].modeNumber;
+            return modeList[i].modeNumber;
+        }
+    }
+    return -1;
+}
+
+/* returns mode number best fitting to monitor attached */
+uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLength) {
+    union edid edid;
+    uint8_t checksum = 0;
+    uint8_t iterator = 0;
+    uint8_t index, j;
+    struct modeParams EDIDmode;
+    if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
+    {
+        printk("Function 15h not supported.\n");
+        return -1;
+    }
+/* version of EDID structure */
+    if(edid.edid1.Version == 1) { /* EDID version 1 */
+        while(iterator<sizeof(struct edid1))
+        {
+            checksum += *((uint8_t *)&edid+iterator);
+            iterator++;
+        }
+        if(checksum)
+        {
+            /* TODO: try reading EDID again */
+            printk("\nEDID v1 checksum failed\n");
+        }
+        /* try to find Detailed Timing Descriptor (defined in BASE EDID)
+           in controller mode list; first should be preffered mode */
+        uint8_t index = 0;
+        while(index < 4) {
+            /* skip if it is monitor descriptor */
+            if(edid.edid1.dtd_md[index].md.Flag0 == 0 && edid.edid1.dtd_md[index].md.Flag1 == 0) {
+                index++;
+                continue;
+            }
+            EDIDmode.resX = (edid.edid1.dtd_md[0].dtd.HorizontalActiveHigh<<8|edid.edid1.dtd_md[0].dtd.HorizontalActiveLow);
+            EDIDmode.resY = (edid.edid1.dtd_md[0].dtd.VerticalActiveHigh<<8|edid.edid1.dtd_md[0].dtd.VerticalActiveLow);
+            if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                return EDIDmode.modeNumber;
+            index++;
+        }
+        /* try to find Detailed Timing Descriptor (defined in optional EXTENSION
+        Blocks) in controller mode list */
+        if(edid.edid1.ExtensionFlag > 0) {
+            /* not implemented */
+        }
+        /* try to find CVT (defined in BASE EDID) in controller mode list */
+        index = 1;
+        while(index < 4) {
+            if(edid.edid1.dtd_md[index].md.Flag0 == 0 && edid.edid1.dtd_md[index].md.Flag1 == 0 && edid.edid1.dtd_md[index].md.DataTypeTag == EDID_DTT_CVT3ByteTimingCodes && edid.edid1.dtd_md[index].md.Flag2 == 0) {
+                struct CVTTimingCodes3B *cvt = (struct CVTTimingCodes3B *) &edid.edid1.dtd_md[index].md.DescriptorData[0];
+                j = 0;
+                while(j < 4) {
+                    EDIDmode.resY = (cvt->cvt[j].AddressableLinesLow|cvt->cvt[j].AddressableLinesHigh<<8);
+                    switch(cvt->cvt[j].AspectRatio) {
+                        case EDID_CVT_AspectRatio_4_3:
+                            EDIDmode.resX = (EDIDmode.resY*4)/3;
+                            break;
+                        case EDID_CVT_AspectRatio_16_9:
+                            EDIDmode.resX = (EDIDmode.resY*16)/9;
+                            break;
+                        case EDID_CVT_AspectRatio_16_10:
+                            EDIDmode.resX = (EDIDmode.resY*16)/10;
+                            break;
+                        case EDID_CVT_AspectRatio_15_9:
+                            EDIDmode.resX = (EDIDmode.resY*15)/9;
+                            break;
+                    }
+                    EDIDmode.resX = (EDIDmode.resX/8)*8;
+                    if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                        return EDIDmode.modeNumber;
+                    j++;
+                }
+            }
+            index++;
+        }
+        /* try to find CVT (defined in optional EXTENSION Blocks)
+        in controller mode list */
+        /* not implemented */
+        /* try to find Standard Timings (listed in BASE EDID)
+        in controller mode list */
+        index = 0;
+        while(index < 8) {
+            /* check if descriptor is unused */
+            if(*(uint16_t*)&edid.edid1.STI[index] == EDID_STI_DescriptorUnused) {
+                index++;
+                continue;
+            }
+            EDIDmode.resX = (edid.edid1.STI[index].HorizontalActivePixels+31)*8;
+            switch(edid.edid1.STI[index].ImageAspectRatio) {
+                case EDID_STI_AspectRatio_16_10:
+                    EDIDmode.resY = (EDIDmode.resX*10)/16;
+                    break;
+                case EDID_STI_AspectRatio_4_3:
+                    EDIDmode.resY = (EDIDmode.resX*3)/4;
+                    break;
+                case EDID_STI_AspectRatio_5_4:
+                    EDIDmode.resY = (EDIDmode.resX*4)/5;
+                    break;
+                case EDID_STI_AspectRatio_16_9:
+                    EDIDmode.resY = (EDIDmode.resX*9)/16;
+                    break;
+            }
+            if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                return EDIDmode.modeNumber;
+            index++;
+        }
+        /* try to find Standard Timings (listed in optional EXTENSION Blocks)
+        in controller mode list */
+        /* not implemented */
+        /* use Established Timings */
+        /* not implemented */
+    }
+    else if(edid.edid2.Version == 2) { /* EDID version 2 */
+        while(iterator<sizeof(struct edid2))
+        {
+            checksum += *((uint8_t *)&edid+iterator);
+            iterator++;
+        }
+        if(!checksum)
+        {
+            printk("EDID v2 checksum OK\n");
+        }
+        printk("EDID v2 not implemented\n");
+    }
+    else
+    {
+        printk("error reading EDID: no corresponding version\n");
+    }
+    return (uint16_t)-1;
+}
 
 void vesa_realmode_bootup_init(){
     /* create 'real mode like' segment descriptors, for switching to real mode */
@@ -495,6 +659,11 @@ ord:    goto ord; /* selector to GDT out of range */
             sortModeParams[idxBestMode] = modeXchgPlace;
         }
         iterator++;
+    }
+
+    vbe_usedMode = findModeUsingEDID(sortModeParams, numberOfModes);
+    if(vbe_usedMode == (uint16_t)-1) {
+        vbe_usedMode = sortModeParams[0].modeNumber;
     }
 
     /* fill framebuffer structs with info about selected mode */
