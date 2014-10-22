@@ -1,5 +1,5 @@
 /**
- * @file
+ * @file vbe3.h
  *
  * @ingroup i386_pc386
  *
