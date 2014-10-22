@@ -333,6 +333,13 @@ inline uint16_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNum
     return (uint16_t)parret->reg_eax;
 }
 
+struct modeParams {
+    uint16_t modeNumber;
+    uint16_t resX;
+    uint16_t resY;
+    uint8_t bpp;
+};
+
 
 void vesa_realmode_bootup_init(){
     /* create 'real mode like' segment descriptors, for switching to real mode */
@@ -398,6 +405,16 @@ ord:    goto ord; /* selector to GDT out of range */
         printk("Function 00h not supported.\n");
     }
 
+/*  Helper array is later filled with mode numbers and their parameters
+    sorted from the biggest values to the smalest where priorities of
+    parameters are from the highest to the lowest: resolution X,
+    resolution Y, bits per pixel.
+    The array is used for search the monitor provided parameters in EDID
+    structure and if found we set such mode using corresponding
+    VESA function. */
+#define MAX_NO_OF_SORTED_MODES 100
+    struct modeParams sortModeParams[MAX_NO_OF_SORTED_MODES];
+
 /* see VBE CORE FUNCTIONS VERSION 3.0 Pag.65 - Appendix 1 - VBE Implementation Considerations */
 #define VBE_END_OF_VideoModeList 0xFFFF
 #define VBE_STUB_VideoModeList 0xFFFF
@@ -409,10 +426,44 @@ ord:    goto ord; /* selector to GDT out of range */
     }
     else
     {
+        /* prepare list of modes */
         while(*(modeNOPtr+iterator) != VBE_END_OF_VideoModeList && *(modeNOPtr+iterator) != 0){ /* some bios implementations ends the list incorrectly with 0 */
+            if(iterator < MAX_NO_OF_SORTED_MODES) {
+                sortModeParams[iterator].modeNumber = *(modeNOPtr+iterator);
+                sortModeParams[iterator].resX = 0;
+                sortModeParams[iterator].resY = 0;
+                sortModeParams[iterator].bpp = 0;
+                iterator ++;
+            }
+            else
+            {
+                break;
+            }
         }
+        if(iterator < MAX_NO_OF_SORTED_MODES)
+            sortModeParams[iterator].modeNumber = 0;
     }
+
     struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_BUF_SPOT;
+    iterator = 0;
+    uint8_t nextFilteredMode = 0;
+    uint16_t required_mode_attributes = VBE_modSupInHWMask | VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
+    /* get parameters of modes and filter modes according to set
+        required parameters */
+    while(iterator < MAX_NO_OF_SORTED_MODES && sortModeParams[iterator].modeNumber!=0){
+        VBEModeInformation(mib, sortModeParams[iterator].modeNumber);
+        if((mib->ModeAttributes&required_mode_attributes) == required_mode_attributes)
+        {
+            sortModeParams[nextFilteredMode].modeNumber = sortModeParams[iterator].modeNumber;
+            sortModeParams[nextFilteredMode].resX = mib->XResolution;
+            sortModeParams[nextFilteredMode].resY = mib->YResolution;
+            sortModeParams[nextFilteredMode].bpp  = mib->BitsPerPixel;
+            nextFilteredMode ++;
+        }
+        iterator ++;
+    }
+    sortModeParams[nextFilteredMode].modeNumber = 0;
+
     /* fill framebuffer structs with info about selected mode */
     uint16_t ret_vbe = VBEModeInformation(mib, vbe_usedMode);
     if((ret_vbe&0xff)!=VBE_functionSupported || (ret_vbe>>8)!=VBE_callSuccessful){
