@@ -464,6 +464,39 @@ ord:    goto ord; /* selector to GDT out of range */
     }
     sortModeParams[nextFilteredMode].modeNumber = 0;
 
+    uint8_t numberOfModes = nextFilteredMode;
+    /* sort filtered modes */
+    struct modeParams modeXchgPlace;
+    iterator = 0;
+    uint8_t j;
+    uint8_t idxBestMode;
+    while(iterator < numberOfModes) {
+        idxBestMode = iterator;
+        j = iterator+1;
+        while(j < numberOfModes) {
+            if(sortModeParams[j].resX > sortModeParams[idxBestMode].resX) {
+                idxBestMode = j;
+            }
+            else if (sortModeParams[j].resX == sortModeParams[idxBestMode].resX) {
+                if(sortModeParams[j].resY > sortModeParams[idxBestMode].resY) {
+                    idxBestMode = j;
+                }
+                else if (sortModeParams[j].resY == sortModeParams[idxBestMode].resY) {
+                    if(sortModeParams[j].bpp > sortModeParams[idxBestMode].bpp) {
+                        idxBestMode = j;
+                    }
+                }
+            }
+            j++;
+        }
+        if(idxBestMode != iterator) {
+            modeXchgPlace = sortModeParams[iterator];
+            sortModeParams[iterator] = sortModeParams[idxBestMode];
+            sortModeParams[idxBestMode] = modeXchgPlace;
+        }
+        iterator++;
+    }
+
     /* fill framebuffer structs with info about selected mode */
     uint16_t ret_vbe = VBEModeInformation(mib, vbe_usedMode);
     if((ret_vbe&0xff)!=VBE_functionSupported || (ret_vbe>>8)!=VBE_callSuccessful){
