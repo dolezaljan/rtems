@@ -86,7 +86,6 @@ struct VBE_registers { /* used for passing parameters, fetching results and pres
  ******************************/
 
 uint16_t vbe_usedMode;
-void *vbe_physBasePtrOfUsedMode;
     
 
 /**
@@ -711,10 +710,10 @@ ord:    goto ord; /* selector to GDT out of range */
     }
 
     /* .bss section is zeroed later, backup fb_fix and fb_var */
-struct fb_fix_screeninfo * pfb_fix = VESA_SPOT;
-struct fb_var_screeninfo * pfb_var = VESA_SPOT+sizeof(struct fb_fix_screeninfo);
-*pfb_fix = fb_fix;
-*pfb_var = fb_var;
+    struct fb_fix_screeninfo * pfb_fix = VESA_SPOT;
+    struct fb_var_screeninfo * pfb_var = VESA_SPOT+sizeof(struct fb_fix_screeninfo);
+    *pfb_fix = fb_fix;
+    *pfb_var = fb_var;
 
     vib = (void *) 0;
     mib = (void *) 0;
@@ -753,7 +752,8 @@ frame_buffer_initialize(
         " - " FB_VESA_NAME " frame buffer device!\n");
         rtems_fatal_error_occurred( status );
     }
-    /* restore fb_fix and fb_var */
+
+/* restore prepared structs, after .bss zeroing */
     struct fb_fix_screeninfo * pfb_fix = VESA_SPOT;
     struct fb_var_screeninfo * pfb_var = VESA_SPOT+sizeof(struct fb_fix_screeninfo);
     fb_fix = *pfb_fix;
