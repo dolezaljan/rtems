@@ -403,7 +403,6 @@ ord:    goto ord; /* selector to GDT out of range */
 #define VBE_STUB_VideoModeList 0xFFFF
     uint16_t *modeNOPtr = (uint16_t*)rmptr_to_pmptr((void *)vib->VideoModePtr);
     uint16_t iterator = 0;
-    uint16_t VideoModes[100];
     if(*(uint16_t*)vib->VideoModePtr == VBE_STUB_VideoModeList)
     {
         printk("VBE Core not implemented!\n");
@@ -411,86 +410,9 @@ ord:    goto ord; /* selector to GDT out of range */
     else
     {
         while(*(modeNOPtr+iterator) != VBE_END_OF_VideoModeList && *(modeNOPtr+iterator) != 0){ /* some bios implementations ends the list incorrectly with 0 */
-            *(VideoModes+iterator) = *(modeNOPtr+iterator);
-            iterator ++;
         }
-        *(VideoModes+iterator) = 0;
     }
-
-    union edid edid;
-    if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
-    {
-        printk("Function 15h not supported.\n");
-    }
-
-    struct edid1 edid1;
-    uint8_t checksum = 0;
-    iterator = 0;
-/* version of EDID structure */
-    if(edid.edid1.Version == 1) { /* EDID version 1 */
-        while(iterator<sizeof(struct edid1))
-        {
-            checksum += *((uint8_t *)&edid+iterator);
-            iterator++;
-        }
-        if(checksum)
-        {
-            /* TODO: try reading EDID again */
-            printk("\nEDID v1 checksum failed\n");
-        }
-//        edid1 = &edid.edid1;
-    }
-    else if(edid.edid2.Version == 2) { /* EDID version 2 */
-        while(iterator<sizeof(struct edid2))
-        {
-            checksum += *((uint8_t *)&edid+iterator);
-            iterator++;
-        }
-        if(!checksum)
-        {
-            printk("EDID v2 checksum OK\n");
-        }
-        printk("EDID v2 not implemented\n");
-    }
-    else
-    {
-        printk("error reading EDID: no corresponding version\n");
-    }
-
     struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_BUF_SPOT;
-    iterator = 0;
-    uint16_t optimalMode = 0, mode1024_768 = 0;
-    void * optimalBasePtr = (void *)0,* pbp1024_768 =  (void *)0;
-
-    while(VideoModes[iterator]!=0){
-        VBEModeInformation(mib, VideoModes[iterator]);
-        uint16_t required_mode_attributes = VBE_modSupInHWMask | VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
-        if((mib->ModeAttributes&required_mode_attributes) == required_mode_attributes)
-        {
-            if(mib->XResolution == 1024 && mib->YResolution == 768)
-            {
-                mode1024_768 = VideoModes[iterator];
-                pbp1024_768 = mib->PhysBasePtr;
-            }
-            if(mib->XResolution == (edid1.dtd_md[0].dtd.HorizontalActiveHigh<<8|edid1.dtd_md[0].dtd.HorizontalActiveLow) && mib->YResolution == (edid1.dtd_md[0].dtd.VerticalActiveHigh<<8|edid1.dtd_md[0].dtd.VerticalActiveLow)){
-                optimalMode = VideoModes[iterator];
-                optimalBasePtr = mib->PhysBasePtr;
-            }
-        }
-        iterator ++;
-    }
-
-    /* dummy mode chooser */
-    if(optimalMode!=0 && optimalBasePtr!=0){
-        vbe_usedMode = optimalMode;
-        vbe_physBasePtrOfUsedMode = optimalBasePtr;
-    }
-    else
-    {
-        vbe_usedMode = mode1024_768;
-        vbe_physBasePtrOfUsedMode = pbp1024_768;
-    }
-    
     /* fill framebuffer structs with info about selected mode */
     uint16_t ret_vbe = VBEModeInformation(mib, vbe_usedMode);
     if((ret_vbe&0xff)!=VBE_functionSupported || (ret_vbe>>8)!=VBE_callSuccessful){
