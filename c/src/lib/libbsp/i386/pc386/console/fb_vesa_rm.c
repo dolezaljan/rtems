@@ -519,22 +519,6 @@ void vesa_realmode_bootup_init(){
     #define rml_limit 0xFFFF
     uint16_t rml_code_dsc, rml_data_dsc;
 
-    /* load GDT register with RTEMS gdt struct and reload segment registers */
-    __asm__ volatile(   "\t"
-                        "lgdt gdtdesc\n\t" /* load RTEMS gdt descriptor */
-                        "ljmp $0x8, $1f\n" /* assuming code segment descriptor is the first entry in GDT */
-                        "1:\t"
-                        "movw $0x10, %%ax\n\t" /* assuming data segment descriptor is the second entry in GDT */
-                        "movw %%ax, %%ds\n\t"
-                        "movw %%ax, %%es\n\t"
-                        "movw %%ax, %%fs\n\t"
-                        "movw %%ax, %%gs\n\t"
-                        "movw %%ax, %%ss\n\t"
-                        :
-                        :
-                        : "eax"
-                    );
-    
     rml_code_dsc = i386_find_empty_gdt_entry();
 
     if(rml_code_dsc==0)
@@ -718,12 +702,6 @@ ord:    goto ord; /* selector to GDT out of range */
         printk("Call to function 2h failed. ax=0x%x\n", ret_vbe);
     }
 
-    /* .bss section is zeroed later, backup fb_fix and fb_var */
-    struct fb_fix_screeninfo * pfb_fix = RM_INT_CALL_SPOT;
-    struct fb_var_screeninfo * pfb_var = RM_INT_CALL_SPOT+sizeof(struct fb_fix_screeninfo);
-    *pfb_fix = fb_fix;
-    *pfb_var = fb_var;
-
     vib = (void *) 0;
     mib = (void *) 0;
     /* deallocate gdt entries */
@@ -761,12 +739,6 @@ frame_buffer_initialize(
         " - " FB_VESA_NAME " frame buffer device!\n");
         rtems_fatal_error_occurred( status );
     }
-
-/* restore prepared structs, after .bss zeroing */
-    struct fb_fix_screeninfo * pfb_fix = RM_INT_CALL_SPOT;
-    struct fb_var_screeninfo * pfb_var = RM_INT_CALL_SPOT+sizeof(struct fb_fix_screeninfo);
-    fb_fix = *pfb_fix;
-    fb_var = *pfb_var;
 
     return RTEMS_SUCCESSFUL;
 

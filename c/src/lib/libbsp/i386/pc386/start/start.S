@@ -158,12 +158,6 @@ speakl:	jmp	speakl             # and SPIN!!!
 
 #endif
 
-#ifdef USE_VBE_RM
-	call _IBMPC_initVideo /* for debugging */
-SYM(vesa_rm): call    vesa_realmode_bootup_init
-#endif
-
-
 /*----------------------------------------------------------------------------+
 | Load the segment registers (this is done by the board's BSP) and perform any
 | other board specific initialization procedures, this piece of code
@@ -210,6 +204,10 @@ SYM (zero_bss):
 | So from now we can use printk
 +-------------------------------------------------------------------*/
 	call _IBMPC_initVideo
+
+#ifdef USE_VBE_RM
+SYM(vesa_rm): call    vesa_realmode_bootup_init
+#endif
 
 /*---------------------------------------------------------------------+
 | Check CPU type. Enable Cache and init coprocessor if needed.
