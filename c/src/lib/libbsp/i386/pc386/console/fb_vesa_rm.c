@@ -586,9 +586,6 @@ ord:    goto ord; /* selector to GDT out of range */
         while(*(modeNOPtr+iterator) != VBE_END_OF_VideoModeList && *(modeNOPtr+iterator) != 0){ /* some bios implementations ends the list incorrectly with 0 */
             if(iterator < MAX_NO_OF_SORTED_MODES) {
                 sortModeParams[iterator].modeNumber = *(modeNOPtr+iterator);
-                sortModeParams[iterator].resX = 0;
-                sortModeParams[iterator].resY = 0;
-                sortModeParams[iterator].bpp = 0;
                 iterator ++;
             }
             else
