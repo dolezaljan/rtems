@@ -52,8 +52,8 @@ static pthread_mutex_t vesa_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct fb_var_screeninfo fb_var;
 static struct fb_fix_screeninfo fb_fix;
 
-#define VBE_REG_LEN 0x24
-struct VBE_registers { /* used for passing parameters, fetching results and preserving values */
+#define INT_REG_LEN 0x24
+struct interrupt_registers { /* used for passing parameters, fetching results and preserving values */
     uint32_t reg_eax;                           /* off 0x0  */
     uint32_t reg_ebx;                           /* off 0x4  */
     uint32_t reg_ecx;                           /* off 0x8  */
@@ -64,24 +64,24 @@ struct VBE_registers { /* used for passing parameters, fetching results and pres
     uint32_t reg_esp_bkp;                       /* off 0x1A */
     uint16_t idtr_lim_bkp;                      /* off 0x1E */
     uint32_t idtr_base_bkp;                     /* off 0x20 */
-    /* if adding new element update VBE_REG_LEN as well */
+    /* if adding new element update INT_REG_LEN as well */
 } __attribute__((__packed__));
 
-/* address where we are going to put VBE buffer, parameter/returned/preserved values and code for calling VBE real mode interface */
-#define VESA_SPOT   0x1000
-#define VBE_BUF_SPOT VESA_SPOT
-#define VBE_BUF_LEN 512
-#define VBE_REGS_SPOT (VBE_BUF_SPOT+VBE_BUF_LEN)
+/* addresses where we are going to put Interrupt buffer, parameter/returned/preserved values, stack and copy code for calling BIOS interrupt real mode interface */
+#define RM_INT_CALL_SPOT   0x1000
+#define RM_INT_BUF_SPOT RM_INT_CALL_SPOT
+#define RM_INT_BUF_LEN 512
+#define INT_REGS_SPOT (RM_INT_BUF_SPOT+RM_INT_BUF_LEN)
 /* position for real mode code reallocation to the first MB of RAM */
-#define VESA_FNC_SPOT (VBE_REGS_SPOT+VBE_REG_LEN)
-#define VBE_STACK_TOP (VESA_FNC_SPOT+0x500)
+#define INT_FNC_SPOT (INT_REGS_SPOT+INT_REG_LEN)
+#define INT_STACK_TOP (INT_FNC_SPOT+0x500)
 
 /******************************
- * VBE_BUF          * 512 B   *
+ * INT_BUF          * 512 B   *
  ******************************
- * VBE_REGs         * 36 B    *
+ * INT_REGs         * 36 B    *
  ******************************
- * VESA_FNC         *         *
+ * INT_FNC          *         *
  ******************** 0x500 B *
  * STACK            *         *
  ******************************/
@@ -190,7 +190,7 @@ static void BIOSinterruptcall(uint8_t interruptNumber){
         "movl    %1+0x1E, %%eax\n\t"
         "lidt    (%%eax)\n\t"
         : 
-        : "i"(VESA_FNC_SPOT), "i"(VBE_REGS_SPOT), "i"(VBE_STACK_TOP), "i"(CR0_PAGING), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE), "a"(interruptNumber)
+        : "i"(INT_FNC_SPOT), "i"(INT_REGS_SPOT), "i"(INT_STACK_TOP), "i"(CR0_PAGING), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE), "a"(interruptNumber)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
 }
@@ -214,8 +214,8 @@ void *rmptr_to_pmptr(void *ptr){
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  */
 inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t queriedVBEVersion) {
-    struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)VBE_BUF_SPOT;
-    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)RM_INT_BUF_SPOT;
+    struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     parret->reg_eax = VBE_RetVBEConInf;
     parret->reg_edi = (uint32_t)VBE_buffer;
     parret->reg_es = 0x0;
@@ -241,8 +241,8 @@ inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uin
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  */
 inline uint16_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t modeNumber){
-    struct VBE_ModeInfoBlock *VBE_buffer = (struct VBE_ModeInfoBlock *)VBE_BUF_SPOT;
-    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    struct VBE_ModeInfoBlock *VBE_buffer = (struct VBE_ModeInfoBlock *)RM_INT_BUF_SPOT;
+    struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     parret->reg_eax = VBE_RetVBEModInf;
     parret->reg_ecx = modeNumber;
     parret->reg_edi = (uint32_t)VBE_buffer;
@@ -264,8 +264,8 @@ inline uint16_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  */
 inline uint16_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBlock){
-    struct VBE_CRTCInfoBlock *VBE_buffer = (struct VBE_CRTCInfoBlock *)VBE_BUF_SPOT;
-    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    struct VBE_CRTCInfoBlock *VBE_buffer = (struct VBE_CRTCInfoBlock *)RM_INT_BUF_SPOT;
+    struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     /* copy CRTC */
     *VBE_buffer = *infoBlock;
     parret->reg_eax = VBE_SetVBEMod;
@@ -283,7 +283,7 @@ inline uint16_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBl
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  */
 inline uint16_t VBECurrentMode(uint16_t *modeNumber){
-    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     parret->reg_eax = VBE_RetCurVBEMod;
     BIOSinterruptcall(0x10);
     *modeNumber = (uint16_t)parret->reg_ebx;
@@ -302,7 +302,7 @@ inline uint16_t VBECurrentMode(uint16_t *modeNumber){
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  */
 inline uint16_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t *secondsToTransferEDIDBlock, uint8_t *DDCLevelSupported){
-    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     parret->reg_eax = VBE_DisDatCha;
     parret->reg_ebx = VBEDDC_Capabilities;
     parret->reg_ecx = controllerUnitNumber;
@@ -323,8 +323,8 @@ inline uint16_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t 
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  */
 inline uint16_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNumber, union edid *buffer){
-    union edid *VBE_buffer = (union edid *)VBE_BUF_SPOT;
-    struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
+    union edid *VBE_buffer = (union edid *)RM_INT_BUF_SPOT;
+    struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     parret->reg_eax = VBE_DisDatCha;
     parret->reg_ebx = VBEDDC_ReadEDID;
     parret->reg_ecx = controllerUnitNumber;
@@ -569,7 +569,7 @@ nsgdtd: goto nsgdtd;
 ord:    goto ord; /* selector to GDT out of range */
     }
 
-    struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)VBE_BUF_SPOT;
+    struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)RM_INT_BUF_SPOT;
     if(VBEControllerInformation(vib, 0x300) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         printk("Function 00h not supported.\n");
@@ -614,7 +614,7 @@ ord:    goto ord; /* selector to GDT out of range */
             sortModeParams[iterator].modeNumber = 0;
     }
 
-    struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)VBE_BUF_SPOT;
+    struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)RM_INT_BUF_SPOT;
     iterator = 0;
     uint8_t nextFilteredMode = 0;
     uint16_t required_mode_attributes = VBE_modSupInHWMask | VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
@@ -707,7 +707,7 @@ ord:    goto ord; /* selector to GDT out of range */
     }
 
     /* set selected mode */
-    ret_vbe = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(VBE_BUF_SPOT));
+    ret_vbe = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(RM_INT_BUF_SPOT));
     if(ret_vbe>>8 == VBE_callFailed)
     {
         printk("Requested mode is not available.");
@@ -717,8 +717,8 @@ ord:    goto ord; /* selector to GDT out of range */
     }
 
     /* .bss section is zeroed later, backup fb_fix and fb_var */
-    struct fb_fix_screeninfo * pfb_fix = VESA_SPOT;
-    struct fb_var_screeninfo * pfb_var = VESA_SPOT+sizeof(struct fb_fix_screeninfo);
+    struct fb_fix_screeninfo * pfb_fix = RM_INT_CALL_SPOT;
+    struct fb_var_screeninfo * pfb_var = RM_INT_CALL_SPOT+sizeof(struct fb_fix_screeninfo);
     *pfb_fix = fb_fix;
     *pfb_var = fb_var;
 
@@ -761,8 +761,8 @@ frame_buffer_initialize(
     }
 
 /* restore prepared structs, after .bss zeroing */
-    struct fb_fix_screeninfo * pfb_fix = VESA_SPOT;
-    struct fb_var_screeninfo * pfb_var = VESA_SPOT+sizeof(struct fb_fix_screeninfo);
+    struct fb_fix_screeninfo * pfb_fix = RM_INT_CALL_SPOT;
+    struct fb_var_screeninfo * pfb_var = RM_INT_CALL_SPOT+sizeof(struct fb_fix_screeninfo);
     fb_fix = *pfb_fix;
     fb_var = *pfb_var;
 
