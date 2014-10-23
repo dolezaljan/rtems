@@ -31,7 +31,6 @@
 #include <string.h>
 
 #include <bsp.h>
-//#include <rtems/score/cpu.h>
 #include <libcpu/cpu.h>
 #include <rtems/libio.h>
 
@@ -741,12 +740,6 @@ frame_buffer_initialize(
     }
 
     return RTEMS_SUCCESSFUL;
-
-//_error:
-//    printk("error\n");
-//    BSP_wait_polled_input();
-//    free_used_descriptors();
-//    return 2;
 }
 
 
