@@ -208,7 +208,8 @@ void *rmptr_to_pmptr(void *ptr){
 /**
  * Returns information about graphic's controller in the infoBlock structure.
  *
- * @param infoBlock returns pointer to filled structure
+ * @param infoBlock pointer to the struct to be filled with
+                    controller information
  * @param queriedVBEVersion if >0x200 then video bios is asked to fill in
  *                          parameters which appeared with second version
  *                          of VBE.
