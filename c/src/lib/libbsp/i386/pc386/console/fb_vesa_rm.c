@@ -392,7 +392,7 @@ uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLength) {
     struct modeParams EDIDmode;
     if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
-        printk("Function 15h not supported.\n");
+        printk("Function 15h (read EDID) not supported.\n");
         return -1;
     }
 /* version of EDID structure */
@@ -558,7 +558,7 @@ ord:    goto ord; /* selector to GDT out of range */
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)RM_INT_BUF_SPOT;
     if(VBEControllerInformation(vib, 0x300) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
-        printk("Function 00h not supported.\n");
+        printk("Function 00h (read VBE info block) not supported.\n");
     }
 
 /*  Helper array is later filled with mode numbers and their parameters
@@ -693,10 +693,10 @@ ord:    goto ord; /* selector to GDT out of range */
     ret_vbe = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(RM_INT_BUF_SPOT));
     if(ret_vbe>>8 == VBE_callFailed)
     {
-        printk("Requested mode is not available.");
+        printk("VBE: Requested mode is not available.");
     }
     if((ret_vbe&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8)){
-        printk("Call to function 2h failed. ax=0x%x\n", ret_vbe);
+        printk("Call to function 2h (set VBE mode) failed. ax=0x%x\n", ret_vbe);
     }
 
     vib = (void *) 0;
