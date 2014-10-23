@@ -52,17 +52,18 @@ static pthread_mutex_t vesa_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct fb_var_screeninfo fb_var;
 static struct fb_fix_screeninfo fb_fix;
 
-#define VBE_REG_LEN 0x20
+#define VBE_REG_LEN 0x24
 struct VBE_registers { /* used for passing parameters, fetching results and preserving values */
     uint32_t reg_eax;                           /* off 0x0  */
     uint32_t reg_ebx;                           /* off 0x4  */
     uint32_t reg_ecx;                           /* off 0x8  */
     uint32_t reg_edx;                           /* off 0xC  */
-    uint32_t reg_edi;                           /* off 0x10 */
-    uint16_t reg_es;                            /* off 0x14 */
-    uint32_t reg_esp_bkp;                       /* off 0x16 */
-    uint16_t idtr_lim_bkp;                      /* off 0x1A */
-    uint32_t idtr_base_bkp;                     /* off 0x1C */
+    uint32_t reg_esi;                           /* off 0x10 */
+    uint32_t reg_edi;                           /* off 0x14 */
+    uint16_t reg_es;                            /* off 0x18 */
+    uint32_t reg_esp_bkp;                       /* off 0x1A */
+    uint16_t idtr_lim_bkp;                      /* off 0x1E */
+    uint32_t idtr_base_bkp;                     /* off 0x20 */
     /* if adding new element update VBE_REG_LEN as well */
 } __attribute__((__packed__));
 
@@ -78,7 +79,7 @@ struct VBE_registers { /* used for passing parameters, fetching results and pres
 /******************************
  * VBE_BUF          * 512 B   *
  ******************************
- * VBE_REGs         * 32 B    *
+ * VBE_REGs         * 36 B    *
  ******************************
  * VESA_FNC         *         *
  ******************** 0x500 B *
@@ -86,14 +87,15 @@ struct VBE_registers { /* used for passing parameters, fetching results and pres
  ******************************/
 
 uint16_t vbe_usedMode;
-    
 
 /**
  * This function presumes prepared real mode like descriptors for code (index 4 - selector 0x20) and data (index 3 - selector 0x18) in the GDT.
  */
-static void vbe_realmode_if(){
+static void BIOSinterruptcall(uint8_t interruptNumber){
         /* copy desired code to first 64kB of RAM */
     __asm__ volatile(   "\t"
+        "movl    $intins, %%ebx\n\t"
+        "movb    %6, 0x1(%%ebx)\n\t" /* write interrupt number */
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
         "movl    $cp_beg, %%esi\n\t"
@@ -124,9 +126,9 @@ static void vbe_realmode_if(){
         "andl    %5, %%eax\n\t"
         "movl    %%eax, %%cr0\n\t"
         /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
-        /* XXX: consider preserving idtr */
-//        "movl    %1+0x1A, %%eax\n\t"
-//        "sidt    (%%eax)\n\t"
+        /* preserve idtr */
+        "movl    %1+0x1E, %%eax\n\t"
+        "sidt    (%%eax)\n\t"
         "movl    %0+(begidt-cp_beg), %%eax\n\t"
         "lidt    (%%eax)\n\t"
         /* flush prefetch queue by far jumping */
@@ -146,25 +148,30 @@ static void vbe_realmode_if(){
         "movl    0x00(%%esi), %%eax\n\t"
         "movl    0x04(%%esi), %%ebx\n\t"
         "movl    0x08(%%esi), %%ecx\n\t"
-        "movl    0x0c(%%esi), %%edx\n\t"
-        "movl    0x10(%%esi), %%edi\n\t"
-        "movw    0x14(%%esi), %%es\n\t"
+        "movl    0x0C(%%esi), %%edx\n\t"
+        "movl    0x14(%%esi), %%edi\n\t"
+        "movw    0x18(%%esi), %%es\n\t"
         /* backup stack pointer */
-        "movl    %%esp, 0x16(%%esi)\n\t"
+        "movl    %%esp, 0x1A(%%esi)\n\t"
+        /* prepare esi register */
+        "movl    0x10(%%esi), %%esi\n\t"
         /* establish rm stack */
         "movl    %2, %%esp\n\t"
-        "int     $0x10\n\t"
+"intins: int     $0x0\n\t"
 
         /* fill return structure */
+        "pushl   %%esi\n\t"
         "movl    %1, %%esi\n\t"
         "movl    %%eax,0x00(%%esi)\n\t"
+        "popl    %%eax\n\t"
+        "movl    %%eax,0x10(%%esi)\n\t" /* store returned esi */
         "movl    %%ebx,0x04(%%esi)\n\t"
         "movl    %%ecx,0x08(%%esi)\n\t"
-        "movl    %%edx,0x0c(%%esi)\n\t"
-        "movl    %%ebp,0x10(%%esi)\n\t"
-        "movw    %%es, 0x14(%%esi)\n\t"
+        "movl    %%edx,0x0C(%%esi)\n\t"
+        "movl    %%edi,0x14(%%esi)\n\t"
+        "movw    %%es, 0x18(%%esi)\n\t"
         /* restore original stack pointer */
-        "movl    0x16(%%esi),%%esp\n\t"
+        "movl    0x1A(%%esi),%%esp\n\t"
 "aftint:"
         /* return to protected mode */
         "movl    %%cr0, %%eax     \n\t"
@@ -180,11 +187,11 @@ static void vbe_realmode_if(){
         "movw    %%ax, %%fs\n\t"
         "movw    %%ax, %%gs\n\t"
         /* restore IDTR */
-//        "movl    %1+0x1A, %%eax\n\t"
-//        "lidt    (%%eax)\n\t"
+        "movl    %1+0x1E, %%eax\n\t"
+        "lidt    (%%eax)\n\t"
         : 
-        : "i"(VESA_FNC_SPOT), "i"(VBE_REGS_SPOT), "i"(VBE_STACK_TOP), "i"(CR0_PAGING), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE)
-        : "memory", "eax", "ebx", "ecx", "edx", "esi", "edi"
+        : "i"(VESA_FNC_SPOT), "i"(VBE_REGS_SPOT), "i"(VBE_STACK_TOP), "i"(CR0_PAGING), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE), "a"(interruptNumber)
+        : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
 }
 
@@ -217,7 +224,7 @@ inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uin
     {
         strncpy((char *)&VBE_buffer->VbeSignature, VBE20plus_SIGNATURE, 4*sizeof(size_t));
     }
-    vbe_realmode_if();
+    BIOSinterruptcall(0x10);
     if((parret->reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         *infoBlock = *VBE_buffer;
@@ -240,7 +247,7 @@ inline uint16_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t
     parret->reg_ecx = modeNumber;
     parret->reg_edi = (uint32_t)VBE_buffer;
     parret->reg_es = 0x0;
-    vbe_realmode_if();
+    BIOSinterruptcall(0x10);
     if((parret->reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         *infoBlock = *VBE_buffer;
@@ -265,7 +272,7 @@ inline uint16_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBl
     parret->reg_ebx = modeNumber;
     parret->reg_edi = (uint32_t)VBE_buffer;
     parret->reg_es = 0x0;
-    vbe_realmode_if();
+    BIOSinterruptcall(0x10);
     return (uint16_t)parret->reg_eax;
 }
 
@@ -278,7 +285,7 @@ inline uint16_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBl
 inline uint16_t VBECurrentMode(uint16_t *modeNumber){
     struct VBE_registers *parret = (struct VBE_registers *)VBE_REGS_SPOT;
     parret->reg_eax = VBE_RetCurVBEMod;
-    vbe_realmode_if();
+    BIOSinterruptcall(0x10);
     *modeNumber = (uint16_t)parret->reg_ebx;
     return (uint16_t)parret->reg_eax;
 }
@@ -301,7 +308,7 @@ inline uint16_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t 
     parret->reg_ecx = controllerUnitNumber;
     parret->reg_edi = 0;
     parret->reg_es = 0;
-    vbe_realmode_if();
+    BIOSinterruptcall(0x10);
     *secondsToTransferEDIDBlock = (uint8_t)parret->reg_ebx >> 8;
     *DDCLevelSupported = (uint8_t)parret->reg_ebx;
     return (uint16_t)parret->reg_eax;
@@ -324,7 +331,7 @@ inline uint16_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNum
     parret->reg_edx = EDIDBlockNumber;
     parret->reg_edi = (uint32_t)VBE_buffer;
     parret->reg_es = 0x0;
-    vbe_realmode_if();
+    BIOSinterruptcall(0x10);
     if((parret->reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         *buffer = *VBE_buffer;
