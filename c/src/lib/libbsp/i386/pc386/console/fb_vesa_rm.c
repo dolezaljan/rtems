@@ -195,7 +195,7 @@ static void BIOSinterruptcall(uint8_t interruptNumber){
     );
 }
 
-void *rmptr_to_pmptr(void *ptr){
+void *i386_Real_mode_ptr_to_physical(void *ptr){
     uint32_t tmp = (uint32_t)ptr>>12&0xFFFF0;
     tmp += (uint32_t)ptr&0xFFFF;
     return (void *) tmp;
@@ -516,7 +516,7 @@ ord:    goto ord; /* selector to GDT out of range */
 #define MAX_NO_OF_SORTED_MODES 100
     struct modeParams sortModeParams[MAX_NO_OF_SORTED_MODES];
 
-    uint16_t *modeNOPtr = (uint16_t*)rmptr_to_pmptr((void *)vib->VideoModePtr);
+    uint16_t *modeNOPtr = (uint16_t*)i386_Real_mode_ptr_to_physical((void *)vib->VideoModePtr);
     uint16_t iterator = 0;
     if(*(uint16_t*)vib->VideoModePtr == VBE_STUB_VideoModeList)
     {
