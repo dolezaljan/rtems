@@ -132,6 +132,13 @@ struct VBE_PMInfoBlock {
     uint8_t   Checksum;              /*  Checksum byte for structure */
 } __attribute__((__packed__)) ; 
 
+/* General VBE signature */
+#define VBE_SIGNATURE "VESA"
+/* Signature for VBE 2.0 and higher */
+#define VBE20plus_SIGNATURE "VBE2"
+/* see VBE CORE FUNCTIONS VERSION 3.0 Pag.65 - Appendix 1 - VBE Implementation Considerations */
+#define VBE_END_OF_VideoModeList 0xFFFF
+#define VBE_STUB_VideoModeList 0xFFFF
 struct VBE_VbeInfoBlock {
     uint8_t   VbeSignature[4];       /*  VBE Signature */
     uint16_t  VbeVersion;            /*  VBE Version */

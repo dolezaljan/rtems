@@ -201,9 +201,6 @@ void *rmptr_to_pmptr(void *ptr){
     return (void *) tmp;
 }
 
-#define VBE_SIGNATURE "VESA"
-#define VBE20plus_SIGNATURE "VBE2"
-
 /**
  * Returns information about graphic's controller in the infoBlock structure.
  *
@@ -570,9 +567,6 @@ ord:    goto ord; /* selector to GDT out of range */
 #define MAX_NO_OF_SORTED_MODES 100
     struct modeParams sortModeParams[MAX_NO_OF_SORTED_MODES];
 
-/* see VBE CORE FUNCTIONS VERSION 3.0 Pag.65 - Appendix 1 - VBE Implementation Considerations */
-#define VBE_END_OF_VideoModeList 0xFFFF
-#define VBE_STUB_VideoModeList 0xFFFF
     uint16_t *modeNOPtr = (uint16_t*)rmptr_to_pmptr((void *)vib->VideoModePtr);
     uint16_t iterator = 0;
     if(*(uint16_t*)vib->VideoModePtr == VBE_STUB_VideoModeList)
