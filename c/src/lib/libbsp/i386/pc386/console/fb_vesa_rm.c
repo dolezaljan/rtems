@@ -333,7 +333,7 @@ uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLength) {
     union edid edid;
     uint8_t checksum = 0;
     uint8_t iterator = 0;
-    uint8_t index, j;
+    uint8_t j;
     struct modeParams EDIDmode;
     if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {

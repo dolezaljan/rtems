@@ -341,7 +341,6 @@ int i386_put_gdt_entry (unsigned short segment_selector_index, unsigned base,
 int i386_free_gdt_entry (unsigned short segment_selector_index)
 {
     unsigned 			gdt_limit;
-    unsigned short              tmp_segment = 0;
     unsigned int*               clear_tmp;
     segment_descriptors* 	gdt_entry_tbl;
 
