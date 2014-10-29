@@ -201,16 +201,6 @@ void *rmptr_to_pmptr(void *ptr){
     return (void *) tmp;
 }
 
-/**
- * Returns information about graphic's controller in the infoBlock structure.
- *
- * @param infoBlock pointer to the struct to be filled with
-                    controller information
- * @param queriedVBEVersion if >0x200 then video bios is asked to fill in
- *                          parameters which appeared with second version
- *                          of VBE.
- * @return  register ax content as defined in VBE RETURN STATUS paragraph
- */
 inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t queriedVBEVersion) {
     struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)RM_INT_BUF_SPOT;
     struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
@@ -230,14 +220,6 @@ inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uin
     return (uint16_t)parret->reg_eax;
 }
 
-/**
- * Fills structure infoBlock with informations about selected mode in
- * modeNumber variable.
- *
- * @param infoBlock pointer to the struct to be filled with mode information
- * @param modeNumber detailes of this mode to be filled
- * @return  register ax content as defined in VBE RETURN STATUS paragraph
- */
 inline uint16_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t modeNumber){
     struct VBE_ModeInfoBlock *VBE_buffer = (struct VBE_ModeInfoBlock *)RM_INT_BUF_SPOT;
     struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
@@ -253,14 +235,6 @@ inline uint16_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t
     return (uint16_t)parret->reg_eax;
 }
 
-/**
- * Sets graphics mode selected. If mode has refreshRateCtrl bit set, than the
- * infoBlock must be filled accordingly.
- *
- * @param modeNumber number of mode to be set
- * @param infoBlock pointer to struct containing refresh rate control info
- * @return  register ax content as defined in VBE RETURN STATUS paragraph
- */
 inline uint16_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBlock){
     struct VBE_CRTCInfoBlock *VBE_buffer = (struct VBE_CRTCInfoBlock *)RM_INT_BUF_SPOT;
     struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
@@ -274,12 +248,6 @@ inline uint16_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBl
     return (uint16_t)parret->reg_eax;
 }
 
-/**
- * Get currently set mode number.
- *
- * @param modeNumber variable to be filled with current mode number
- * @return  register ax content as defined in VBE RETURN STATUS paragraph
- */
 inline uint16_t VBECurrentMode(uint16_t *modeNumber){
     struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     parret->reg_eax = VBE_RetCurVBEMod;
@@ -288,17 +256,6 @@ inline uint16_t VBECurrentMode(uint16_t *modeNumber){
     return (uint16_t)parret->reg_eax;
 }
 
-/**
- * Gets information about display data channel implemented in the
- * graphic's controller.
- * 
- * @param controllerUnitNumber
- * @param secondsToTransferEDIDBlock approximate time to transfer one EDID block
- *                                   rounded up to seconds
- * @param DDCLevelSupported after call contains DDC version supported and
- *                          screen blanking state during transfer
- * @return  register ax content as defined in VBE RETURN STATUS paragraph
- */
 inline uint16_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t *secondsToTransferEDIDBlock, uint8_t *DDCLevelSupported){
     struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     parret->reg_eax = VBE_DisDatCha;
@@ -312,14 +269,6 @@ inline uint16_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t 
     return (uint16_t)parret->reg_eax;
 }
 
-/**
- * Reads selected EDID block from display attached to controller's interface.
- *
- * @param controllerUnitNumber
- * @param EDIDBlockNumber block no. to be read from the display
- * @param buffer place to store block fetched from the display 
- * @return  register ax content as defined in VBE RETURN STATUS paragraph
- */
 inline uint16_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNumber, union edid *buffer){
     union edid *VBE_buffer = (union edid *)RM_INT_BUF_SPOT;
     struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
