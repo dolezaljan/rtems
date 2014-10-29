@@ -186,6 +186,15 @@ void *i386_Physical_to_logical(
 );
 
 /*
+ *  i386_Real_mode_ptr_to_physical
+ *
+ *  Converts real mode pointer {segment, offset} to physical address.
+ */
+void *i386_Real_mode_ptr_to_physical(
+  void *ptr
+);
+
+/*
  *  "Simpler" names for a lot of the things defined in this file
  */
 

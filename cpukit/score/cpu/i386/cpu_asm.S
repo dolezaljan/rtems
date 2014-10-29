@@ -312,6 +312,27 @@ SYM (i386_Physical_to_logical):
         movl    ecx,eax                /* eax = ecx */
         ret
 
+/*
+ *  void *i386_Real_mode_ptr_to_physical(
+ *     void     *ptr
+ *  );
+ *
+ *  Returns thirty-two bit physical address for segment:offset realmode pointer.
+ */
+
+.set RM_PTR_ARG, 4
+
+       PUBLIC (i386_Real_mode_ptr_to_physical)
+
+SYM (i386_Real_mode_ptr_to_physical):
+        movl    RM_PTR_ARG(esp),eax
+        xorl    ecx, ecx
+        movw    ax, cx
+        shrl    $12, eax
+        andl    $0xFFFF0, eax
+        addl    ecx, eax
+        ret
+
 END_CODE
 
 END

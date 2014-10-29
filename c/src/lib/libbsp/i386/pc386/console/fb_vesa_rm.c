@@ -195,12 +195,6 @@ static void BIOSinterruptcall(uint8_t interruptNumber){
     );
 }
 
-void *i386_Real_mode_ptr_to_physical(void *ptr){
-    uint32_t tmp = (uint32_t)ptr>>12&0xFFFF0;
-    tmp += (uint32_t)ptr&0xFFFF;
-    return (void *) tmp;
-}
-
 inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t queriedVBEVersion) {
     struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)RM_INT_BUF_SPOT;
     struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
