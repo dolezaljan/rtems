@@ -24,8 +24,7 @@
  *  Interrupt 0x10 is used for entering graphics BIOS.
  */
 
-#include <vbe3.h>
-#include <edid.h>
+#include <fb_vesa.h>
 
 #include <pthread.h>
 #include <string.h>
