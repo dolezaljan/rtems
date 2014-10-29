@@ -313,7 +313,7 @@ extern int i386_free_gdt_entry (unsigned short segment_selector);
  * @return  0 FAILED no empty descriptor
  *          <1;65535> segment_selector number as index to GDT
  */
-extern unsigned short i386_find_empty_gdt_entry ();
+extern unsigned short i386_find_empty_gdt_entry (void);
 
 /**
  * Copies GDT entry at index @segment_selector to position given by @strucToFill
