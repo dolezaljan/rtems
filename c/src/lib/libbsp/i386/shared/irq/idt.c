@@ -340,50 +340,12 @@ int i386_set_gdt_entry (unsigned short segment_selector_index, unsigned base,
 int i386_put_gdt_entry (unsigned short segment_selector_index, unsigned base,
 			unsigned limit, segment_descriptors* sd_flags)
 {
-    unsigned 			gdt_limit;
-    unsigned short              tmp_segment = 0;
-    unsigned int                limit_adjusted;
-    segment_descriptors* 	gdt_entry_tbl;
-
-    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
-
-    if ( segment_selector_index >= (gdt_limit+1)/8 ) {
-      return 0;
-    }
-    /*
-     * set up limit
-     */
-    sd_flags->granularity = 0;
-    limit_adjusted = limit;
-    if ( limit > 65535 ) {
-      sd_flags->granularity = 1;
-      limit_adjusted /= 4096;
-    }
-    sd_flags->limit_15_0  = limit_adjusted & 0xffff;
-    sd_flags->limit_19_16 = (limit_adjusted >> 16) & 0xf;
-    /*
-     * set up base
-     */
-    sd_flags->base_address_15_0  = base & 0xffff;
-    sd_flags->base_address_23_16 = (base >> 16) & 0xff;
-    sd_flags->base_address_31_24 = (base >> 24) & 0xff;
+    i386_fill_segment_desc_limit(limit, sd_flags);
+    i386_fill_segment_desc_base(base, sd_flags);
 
     if ( segment_selector_index != 0 )
     {
-        /* put prepared descriptor into the GDT */
-        gdt_entry_tbl[segment_selector_index] = *sd_flags;
-      /*
-       * Now, reload all segment registers so the possible changes takes effect.
-       */
-      __asm__ volatile( "movw %%ds,%0 ; movw %0,%%ds\n\t"
-                    "movw %%es,%0 ; movw %0,%%es\n\t"
-                    "movw %%fs,%0 ; movw %0,%%fs\n\t"
-                    "movw %%gs,%0 ; movw %0,%%gs\n\t"
-                    "movw %%ss,%0 ; movw %0,%%ss"
-                     : "=r" (tmp_segment)
-                     : "0"  (tmp_segment)
-                   );
-        return 1;
+        return i386_raw_gdt_entry(segment_selector_index, sd_flags);
     }
 
     return 3;
