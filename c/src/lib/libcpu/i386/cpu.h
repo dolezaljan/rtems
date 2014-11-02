@@ -295,6 +295,19 @@ extern int i386_put_gdt_entry(unsigned short segment_selector,unsigned int base,
                               unsigned int limit,segment_descriptors* sd_flags); 
 
 /**
+ * C callable function:
+ * Determines whether any of segmentation register are currently referencing
+ * to the GDT at given index
+ *
+ * @param segment_selector_index index to GDT table, which is searched for in
+ *          index part of segmentation registers
+ * @return  0 Usage Not Found
+ *          1 At least one segmentation register uses segment descriptor
+ *              from GDT at @segment_selector_index position
+ */
+int i386_segment_desc_in_use (unsigned short segment_selector_index);
+
+/**
  * C callable function clearing descriptor in GDT for further use.
  * Freeing here means putting zeros to the descriptor on @segment_selector
  * position.

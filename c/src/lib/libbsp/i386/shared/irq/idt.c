@@ -338,6 +338,44 @@ int i386_put_gdt_entry (unsigned short segment_selector_index, unsigned base,
     return 3;
 }
 
+int i386_segment_desc_in_use (unsigned short segment_selector_index)
+{
+    unsigned short              segmentation_reg;
+
+    __asm__ volatile( "movw %%ds,%0\n\t"
+                    : "=r" (segmentation_reg)
+                    );
+    if((segmentation_reg>>3)==segment_selector_index)
+        return 1;
+    __asm__ volatile( "movw %%es,%0\n\t"
+                    : "=r" (segmentation_reg)
+                    );
+    if((segmentation_reg>>3)==segment_selector_index)
+        return 1;
+    __asm__ volatile( "movw %%fs,%0\n\t"
+                    : "=r" (segmentation_reg)
+                    );
+    if((segmentation_reg>>3)==segment_selector_index)
+        return 1;
+    __asm__ volatile( "movw %%gs,%0\n\t"
+                    : "=r" (segmentation_reg)
+                    );
+    if((segmentation_reg>>3)==segment_selector_index)
+        return 1;
+    __asm__ volatile( "movw %%ss,%0\n\t"
+                    : "=r" (segmentation_reg)
+                    );
+    if((segmentation_reg>>3)==segment_selector_index)
+        return 1;
+    __asm__ volatile( "movw %%cs,%0\n\t"
+                    : "=r" (segmentation_reg)
+                    );
+    if((segmentation_reg>>3)==segment_selector_index)
+        return 1;
+
+    return 0;
+}
+
 int i386_free_gdt_entry (unsigned short segment_selector_index)
 {
     unsigned 			gdt_limit;
