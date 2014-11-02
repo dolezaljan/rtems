@@ -230,6 +230,39 @@ int i386_get_idt_config (rtems_raw_irq_global_settings** config)
   return 1;
 }
 
+int i386_raw_gdt_entry (unsigned short segment_selector_index, segment_descriptors* sd)
+{
+    unsigned 			gdt_limit;
+    unsigned short              tmp_segment = 0;
+    segment_descriptors* 	gdt_entry_tbl;
+
+    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
+
+    if ( segment_selector_index >= (gdt_limit+1)/8 ) {
+      /* index to GDT table out of bounds */
+      return 0;
+    }
+    if ( segment_selector_index == 0 ) {
+      /* index 0 is not usable */
+      return 0;
+    }
+
+    /* put prepared descriptor into the GDT */
+    gdt_entry_tbl[segment_selector_index] = *sd;
+    /*
+     * Now, reload all segment registers so that the possible changes takes effect.
+     */
+    __asm__ volatile( "movw %%ds,%0 ; movw %0,%%ds\n\t"
+                  "movw %%es,%0 ; movw %0,%%es\n\t"
+                  "movw %%fs,%0 ; movw %0,%%fs\n\t"
+                  "movw %%gs,%0 ; movw %0,%%gs\n\t"
+                  "movw %%ss,%0 ; movw %0,%%ss"
+                   : "=r" (tmp_segment)
+                   : "0"  (tmp_segment)
+                 );
+    return 1;
+}
+
 /*
  * Caution this function assumes the GDTR has been already set.
  */

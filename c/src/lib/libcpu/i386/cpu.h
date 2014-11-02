@@ -269,6 +269,18 @@ extern void i386_get_info_from_GDTR (segment_descriptors** table,
 extern void i386_set_GDTR (segment_descriptors*,
 			   unsigned limit);
 
+/**
+ * C callable function:
+ * Puts global descriptor @sd to the global descriptor table on index
+ * @segment_selector_index
+ *
+ * @return  0 FAILED out of GDT range or index is 0, which is not valid
+ *                   index in GDT
+ *          1 SUCCESS
+ */
+extern int i386_raw_gdt_entry ( unsigned short segment_selector_index,
+                                segment_descriptors* sd);
+
 /*
  * C callable function enabling to set up one raw interrupt handler
  */
