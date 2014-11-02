@@ -281,6 +281,21 @@ extern void i386_set_GDTR (segment_descriptors*,
 extern int i386_raw_gdt_entry ( unsigned short segment_selector_index,
                                 segment_descriptors* sd);
 
+/**
+ * C callable function
+ * fills @sd with provided @base in appropriate fields of @sd
+ *
+ * 
+ */
+extern void i386_fill_segment_desc_base(unsigned base, segment_descriptors* sd);
+
+/**
+ * C callable function
+ * fills @sd with provided @limit in appropriate fields of @sd
+ *
+ */
+extern void i386_fill_segment_desc_limit(unsigned limit, segment_descriptors* sd);
+
 /*
  * C callable function enabling to set up one raw interrupt handler
  */

@@ -263,6 +263,24 @@ int i386_raw_gdt_entry (unsigned short segment_selector_index, segment_descripto
     return 1;
 }
 
+inline void i386_fill_segment_desc_base(unsigned base, segment_descriptors* sd)
+{
+    sd->base_address_15_0  = base & 0xffff;
+    sd->base_address_23_16 = (base >> 16) & 0xff;
+    sd->base_address_31_24 = (base >> 24) & 0xff;
+}
+
+inline void i386_fill_segment_desc_limit(unsigned limit, segment_descriptors* sd)
+{
+    sd->granularity = 0;
+    if ( limit > 65535 ) {
+      sd->granularity = 1;
+      limit /= 4096;
+     }
+    sd->limit_15_0  = limit & 0xffff;
+    sd->limit_19_16 = (limit >> 16) & 0xf;
+}
+
 /*
  * Caution this function assumes the GDTR has been already set.
  */
