@@ -366,7 +366,7 @@ unsigned short i386_find_empty_gdt_entry ()
     segment_descriptors* 	gdt_entry_tbl;
 
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
-    for(segment_selector_index = 1;segment_selector_index<=gdt_limit;segment_selector_index++){
+    for(segment_selector_index = 1;segment_selector_index<(gdt_limit+1)/8;segment_selector_index++){
         empty_tmp = (unsigned int*) &gdt_entry_tbl[segment_selector_index];
         if(*empty_tmp == 0 && *(empty_tmp+1) == 0)return segment_selector_index;
     }
