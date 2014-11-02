@@ -283,13 +283,13 @@ extern int i386_set_gdt_entry (unsigned short segment_selector, unsigned base,
  * if so, only @base and @limit are filled into @sd_flags. Granularity flag is
  * modified depending on the specified limit.
  * 
- * @return  0 FAILED out of GDT range 
- *          1 SUCCESS @sd_flags filled and descriptor put in GDT 
- *          3 SUCCESS @sd_flags filled 
  * @param segment_selector index to GDT table, where new descriptor will be stored
  * @param base base address of new segment
  * @param limit number of limit bytes of new segment (granularity bit will be set if needed)
  * @param sd_flags @limit and @base will be filled in and alogn with prepared flags, this will be copied into GDT at @segment_selector index
+ * @return  0 FAILED out of GDT range 
+ *          1 SUCCESS @sd_flags filled and descriptor put in GDT 
+ *          3 SUCCESS @sd_flags filled 
  */ 
 extern int i386_put_gdt_entry(unsigned short segment_selector,unsigned int base, 
                               unsigned int limit,segment_descriptors* sd_flags); 
@@ -315,9 +315,10 @@ extern int i386_free_gdt_entry (unsigned short segment_selector);
 extern unsigned short i386_find_empty_gdt_entry (void);
 
 /**
- * Copies GDT entry at index @segment_selector to position given by @strucToFill
+ * Copies GDT entry at index @segment_selector to structure
+ * pointed to by @strucToFill
  *
- * @param   segment_selector index to GDT table for specifying descriptor to copy
+ * @param  segment_selector index to GDT table for specifying descriptor to copy
  * @return  0 FAILED segment_selector out of GDT range
  *          <1;65535> retrieved segment_selector
  */
