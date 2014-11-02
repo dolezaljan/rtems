@@ -287,54 +287,22 @@ inline void i386_fill_segment_desc_limit(unsigned limit, segment_descriptors* sd
 int i386_set_gdt_entry (unsigned short segment_selector_index, unsigned base,
 			unsigned limit)
 {
-    unsigned 			gdt_limit;
-    unsigned short              tmp_segment = 0;
-    unsigned int                limit_adjusted;
-    segment_descriptors* 	gdt_entry_tbl;
+    segment_descriptors         gdt_entry;
 
-    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
-
-    if (segment_selector_index > limit) {
-      return 0;
-    }
-    /*
-     * set up limit first
-     */
-    limit_adjusted = limit;
-    if ( limit > 4095 ) {
-      gdt_entry_tbl[segment_selector_index].granularity = 1;
-      limit_adjusted /= 4096;
-    }
-    gdt_entry_tbl[segment_selector_index].limit_15_0  = limit_adjusted & 0xffff;
-    gdt_entry_tbl[segment_selector_index].limit_19_16 = (limit_adjusted >> 16) & 0xf;
-    /*
-     * set up base
-     */
-    gdt_entry_tbl[segment_selector_index].base_address_15_0  = base & 0xffff;
-    gdt_entry_tbl[segment_selector_index].base_address_23_16 = (base >> 16) & 0xff;
-    gdt_entry_tbl[segment_selector_index].base_address_31_24 = (base >> 24) & 0xff;
+    i386_fill_segment_desc_limit(limit, &gdt_entry);
+    i386_fill_segment_desc_base(base, &gdt_entry);
     /*
      * set up descriptor type (this may well becomes a parameter if needed)
      */
-    gdt_entry_tbl[segment_selector_index].type 		= 2;   	/* Data R/W */
-    gdt_entry_tbl[segment_selector_index].descriptor_type 	= 1;	/* Code or Data */
-    gdt_entry_tbl[segment_selector_index].privilege 		= 0; 	/* ring 0 */
-    gdt_entry_tbl[segment_selector_index].present 		= 1; 	/* not present */
+    gdt_entry.type 		= 2;    /* Data R/W */
+    gdt_entry.descriptor_type 	= 1;    /* Code or Data */
+    gdt_entry.privilege         = 0;    /* ring 0 */
+    gdt_entry.present 		= 1;    /* not present */
 
     /*
      * Now, reload all segment registers so the limit takes effect.
      */
-
-    __asm__ volatile( "movw %%ds,%0 ; movw %0,%%ds\n\t"
-                  "movw %%es,%0 ; movw %0,%%es\n\t"
-                  "movw %%fs,%0 ; movw %0,%%fs\n\t"
-                  "movw %%gs,%0 ; movw %0,%%gs\n\t"
-                  "movw %%ss,%0 ; movw %0,%%ss"
-                   : "=r" (tmp_segment)
-                   : "0"  (tmp_segment)
-		  );
-
-    return 1;
+    return i386_raw_gdt_entry(segment_selector_index, &gdt_entry);
 }
 
 int i386_put_gdt_entry (unsigned short segment_selector_index, unsigned base,
