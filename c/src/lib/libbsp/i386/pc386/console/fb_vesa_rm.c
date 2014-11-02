@@ -638,11 +638,11 @@ ord:    goto ord; /* selector to GDT out of range */
     vib = (void *) 0;
     mib = (void *) 0;
     /* deallocate gdt entries */
-    if(i386_free_gdt_entry(rml_code_dsc))
+    if(!i386_free_gdt_entry(rml_code_dsc))
     {
 sorc:   goto sorc; /* selector to GDT out of range */
     }
-    if(i386_free_gdt_entry(rml_data_dsc))
+    if(!i386_free_gdt_entry(rml_data_dsc))
     {
 dorc:   goto dorc; /* selector to GDT out of range */
     }

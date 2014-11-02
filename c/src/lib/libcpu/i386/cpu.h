@@ -300,9 +300,8 @@ extern int i386_put_gdt_entry(unsigned short segment_selector,unsigned int base,
  * position.
  * 
  * @param segment_selector index to GDT telling which descriptor to remove
- * @return  0 SUCCESS
- *          1 FAILED out of GDT range or @segment_selector == 0
- *          2 FAILED @segment_selector in use
+ * @return  0 FAILED out of GDT range or @segment_selector == 0
+ *          1 SUCCESS
  */
 extern int i386_free_gdt_entry (unsigned short segment_selector);
 

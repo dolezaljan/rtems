@@ -347,17 +347,15 @@ int i386_free_gdt_entry (unsigned short segment_selector_index)
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
 
     if ( segment_selector_index >= (gdt_limit+1)/8 || segment_selector_index == 0 ) {
-      return 1;
+      return 0;
     }
-
-    /* ToDo: check if selector is in use */
 
     /* mark as free by setting all bits to 0 */
     clear_tmp = (unsigned int*) &gdt_entry_tbl[segment_selector_index];
     *clear_tmp = 0;
     *(clear_tmp+1) = 0;
 
-    return 0;
+    return 1;
 }
 
 unsigned short i386_find_empty_gdt_entry ()
