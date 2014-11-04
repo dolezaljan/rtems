@@ -131,8 +131,9 @@ inline uint16_t get_primary_rm_buffer_size() {
 /**
  * This function presumes prepared real mode like descriptors for code (index 4 - selector 0x20) and data (index 3 - selector 0x18) in the GDT.
  */
-void BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
-    prepareRMDescriptors();
+int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
+    if(prepareRMDescriptors()!=__DP_YES)
+	return 0;
     struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     *parret = *ir;
         /* copy desired code to first 64kB of RAM */
@@ -236,5 +237,6 @@ void BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         : "i"(INT_FNC_SPOT), "i"(INT_REGS_SPOT), "i"(INT_STACK_TOP), "i"(CR0_PAGING), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE), "a"(interruptNumber)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
+    return 1;
 }
 
