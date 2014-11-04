@@ -34,11 +34,32 @@
 
 #define __DP_TYPE 	uint8_t
 #define __DP_YES 	((__DP_TYPE)1)
+#define __DP_OK         __DP_YES
 #define __DP_NO		((__DP_TYPE)-1)
 #define __DP_FAIL	((__DP_TYPE)0)
 static __DP_TYPE descsPrepared = __DP_NO;
 
-static uint16_t rml_code_dsc, rml_data_dsc;
+/* rml - real mode alike */
+#define rml_base  0x0
+#define rml_limit 0xFFFF
+static uint16_t rml_code_dsc = 0;
+static uint16_t rml_data_dsc = 0;
+
+static __DP_TYPE destroyRMDescriptors() {
+    __DP_TYPE ret = __DP_OK;
+    /* deallocate gdt entries */
+    if(!i386_free_gdt_entry(rml_code_dsc))
+    {
+        /* selector to GDT out of range */
+        ret = __DP_FAIL;
+    }
+    if(!i386_free_gdt_entry(rml_data_dsc))
+    {
+        /* selector to GDT out of range */
+        ret = __DP_FAIL;
+    }
+    return ret;
+}
 
 /*
  * Prepares real-mode like descriptors to be used for switching
@@ -48,17 +69,16 @@ static uint16_t rml_code_dsc, rml_data_dsc;
  * @return __DP_FAIL descriptors allocation failed
  */
 static __DP_TYPE prepareRMDescriptors () {
+    /* check for previous failures */
+    if(descsPrepared == __DP_FAIL)
+        return descsPrepared;
     /* create 'real mode like' segment descriptors, for switching to real mode */
-    #define rml_base  0x0
-    #define rml_limit 0xFFFF
-
     rml_code_dsc = i386_find_empty_gdt_entry();
-
     if(rml_code_dsc==0)
     {
         /* not enough space in GDT */
-nsgdtc: goto nsgdtc;
-        return;
+        descsPrepared = __DP_FAIL;
+        return descsPrepared;
     }
     
     segment_descriptors flags_desc;
@@ -72,36 +92,31 @@ nsgdtc: goto nsgdtc;
     flags_desc.granularity         = 0x0;      /* bits 1  */
     if(i386_put_gdt_entry(rml_code_dsc, rml_base, rml_limit, &flags_desc)==0)
     {
-orc:    goto orc; /* selector to GDT out of range */
+        /* selector to GDT out of range */
+        destroyRMDescriptors();
+        descsPrepared = __DP_FAIL;
+        return descsPrepared;
     }
 
     rml_data_dsc = i386_find_empty_gdt_entry();
     if(rml_data_dsc==0)
     {
-        /* not enough space in GDT */
-nsgdtd: goto nsgdtd;
-        return;
+        /* not enough space in GDT for both descriptors */
+        i386_free_gdt_entry(rml_code_dsc);
+        descsPrepared = __DP_FAIL;
+        return descsPrepared;
     }
+
     flags_desc.type                = 0x2;      /* bits 4  */
     if(i386_put_gdt_entry(rml_data_dsc, rml_base, rml_limit, &flags_desc)==0)
     {
-ord:    goto ord; /* selector to GDT out of range */
+        /* selector to GDT out of range */
+        destroyRMDescriptors();
+        descsPrepared = __DP_FAIL;
+        return descsPrepared;
     }
-
     
     return __DP_YES;
-}
-
-static __DP_TYPE destroyRMDescriptors() {
-    /* deallocate gdt entries */
-    if(!i386_free_gdt_entry(rml_code_dsc))
-    {
-sorc:   goto sorc; /* selector to GDT out of range */
-    }
-    if(!i386_free_gdt_entry(rml_data_dsc))
-    {
-dorc:   goto dorc; /* selector to GDT out of range */
-    }
 }
 
 inline void *get_primary_rm_buffer() {
