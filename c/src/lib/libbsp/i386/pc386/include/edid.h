@@ -220,6 +220,7 @@ struct EstablishedTimingsIII {
 }__attribute__((__packed__));
 
 #define EDID_DTT_DescriptorSpaceUnused      0x10
+/* DTT 0x0 - 0xF are manufacturer specific */
 
 struct MonitorDescriptor {
     uint16_t Flag0;
