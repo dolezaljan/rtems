@@ -49,14 +49,14 @@ struct interrupt_registers { /* used for passing parameters, fetching results an
  *
  * @return pointer to buffer
  */
-void *get_primary_rm_buffer();
+extern void *get_primary_rm_buffer(void);
 
 /**
  * returns size of real mode buffer
  *
  * @return size of buffer
  */
-uint16_t get_primary_rm_buffer_size();
+extern uint16_t get_primary_rm_buffer_size(void);
 
 /* if there is ever need to have more buffers or setting size of the buffer,
  * feel free to modify the code */
@@ -66,5 +66,5 @@ uint16_t get_primary_rm_buffer_size();
  * 
  * @param interrupt number to be called
  */
-void BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir);
+extern void BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir);
 

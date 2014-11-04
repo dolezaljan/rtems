@@ -45,7 +45,7 @@ static __DP_TYPE descsPrepared = __DP_NO;
 static uint16_t rml_code_dsc = 0;
 static uint16_t rml_data_dsc = 0;
 
-static __DP_TYPE destroyRMDescriptors() {
+static __DP_TYPE destroyRMDescriptors(void) {
     __DP_TYPE ret = __DP_OK;
     /* deallocate gdt entries */
     if(!i386_free_gdt_entry(rml_code_dsc))
@@ -68,7 +68,7 @@ static __DP_TYPE destroyRMDescriptors() {
  * @return __DP_YES descriptors are prepared
  * @return __DP_FAIL descriptors allocation failed
  */
-static __DP_TYPE prepareRMDescriptors () {
+static __DP_TYPE prepareRMDescriptors (void) {
     /* check for previous failures */
     if(descsPrepared == __DP_FAIL)
         return descsPrepared;
