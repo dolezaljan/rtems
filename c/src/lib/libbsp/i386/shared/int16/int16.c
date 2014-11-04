@@ -66,11 +66,11 @@ static __DP_TYPE destroyRMDescriptors(void) {
  * to real mode.
  *
  * @return __DP_YES descriptors are prepared
- * @return __DP_FAIL descriptors allocation failed
+ * @return __DP_FAIL descriptors allocation failed (GDT too small)
  */
 static __DP_TYPE prepareRMDescriptors (void) {
-    /* check for previous failures */
-    if(descsPrepared == __DP_FAIL)
+    /* check if descriptors were prepared already */
+    if(descsPrepared == __DP_YES)
         return descsPrepared;
     /* create 'real mode like' segment descriptors, for switching to real mode */
     rml_code_dsc = i386_find_empty_gdt_entry();
@@ -102,7 +102,7 @@ static __DP_TYPE prepareRMDescriptors (void) {
     if(rml_data_dsc==0)
     {
         /* not enough space in GDT for both descriptors */
-        i386_free_gdt_entry(rml_code_dsc);
+        destroyRMDescriptors();
         descsPrepared = __DP_FAIL;
         return descsPrepared;
     }
@@ -116,7 +116,8 @@ static __DP_TYPE prepareRMDescriptors (void) {
         return descsPrepared;
     }
     
-    return __DP_YES;
+    descsPrepared = __DP_YES;
+    return descsPrepared;
 }
 
 inline void *get_primary_rm_buffer() {
