@@ -311,47 +311,6 @@ uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLength) {
 }
 
 void vesa_realmode_bootup_init(){
-    /* create 'real mode like' segment descriptors, for switching to real mode */
-    #define rml_base  0x0
-    #define rml_limit 0xFFFF
-    uint16_t rml_code_dsc, rml_data_dsc;
-
-    rml_code_dsc = i386_find_empty_gdt_entry();
-
-    if(rml_code_dsc==0)
-    {
-        /* not enough space in GDT */
-nsgdtc: goto nsgdtc;
-        return;
-    }
-    
-    segment_descriptors flags_desc;
-    flags_desc.type                = 0xE;      /* bits 4  */
-    flags_desc.descriptor_type     = 0x1;      /* bits 1  */
-    flags_desc.privilege           = 0x0;      /* bits 2  */
-    flags_desc.present             = 0x1;      /* bits 1  */
-    flags_desc.available           = 0x0;      /* bits 1  */
-    flags_desc.fixed_value_bits    = 0x0;      /* bits 1  */
-    flags_desc.operation_size      = 0x0;      /* bits 1  */
-    flags_desc.granularity         = 0x0;      /* bits 1  */
-    if(i386_put_gdt_entry(rml_code_dsc, rml_base, rml_limit, &flags_desc)==0)
-    {
-orc:    goto orc; /* selector to GDT out of range */
-    }
-
-    rml_data_dsc = i386_find_empty_gdt_entry();
-    if(rml_data_dsc==0)
-    {
-        /* not enough space in GDT */
-nsgdtd: goto nsgdtd;
-        return;
-    }
-    flags_desc.type                = 0x2;      /* bits 4  */
-    if(i386_put_gdt_entry(rml_data_dsc, rml_base, rml_limit, &flags_desc)==0)
-    {
-ord:    goto ord; /* selector to GDT out of range */
-    }
-
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)get_primary_rm_buffer();
     if(VBEControllerInformation(vib, 0x300) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
@@ -495,15 +454,6 @@ ord:    goto ord; /* selector to GDT out of range */
 
     vib = (void *) 0;
     mib = (void *) 0;
-    /* deallocate gdt entries */
-    if(!i386_free_gdt_entry(rml_code_dsc))
-    {
-sorc:   goto sorc; /* selector to GDT out of range */
-    }
-    if(!i386_free_gdt_entry(rml_data_dsc))
-    {
-dorc:   goto dorc; /* selector to GDT out of range */
-    }
 }
 
 /*

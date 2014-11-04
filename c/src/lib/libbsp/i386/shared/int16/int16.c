@@ -32,6 +32,77 @@
  * STACK            *         *
  ******************************/
 
+#define __DP_TYPE 	uint8_t
+#define __DP_YES 	((__DP_TYPE)1)
+#define __DP_NO		((__DP_TYPE)-1)
+#define __DP_FAIL	((__DP_TYPE)0)
+static __DP_TYPE descsPrepared = __DP_NO;
+
+static uint16_t rml_code_dsc, rml_data_dsc;
+
+/*
+ * Prepares real-mode like descriptors to be used for switching
+ * to real mode.
+ *
+ * @return __DP_YES descriptors are prepared
+ * @return __DP_FAIL descriptors allocation failed
+ */
+static __DP_TYPE prepareRMDescriptors () {
+    /* create 'real mode like' segment descriptors, for switching to real mode */
+    #define rml_base  0x0
+    #define rml_limit 0xFFFF
+
+    rml_code_dsc = i386_find_empty_gdt_entry();
+
+    if(rml_code_dsc==0)
+    {
+        /* not enough space in GDT */
+nsgdtc: goto nsgdtc;
+        return;
+    }
+    
+    segment_descriptors flags_desc;
+    flags_desc.type                = 0xE;      /* bits 4  */
+    flags_desc.descriptor_type     = 0x1;      /* bits 1  */
+    flags_desc.privilege           = 0x0;      /* bits 2  */
+    flags_desc.present             = 0x1;      /* bits 1  */
+    flags_desc.available           = 0x0;      /* bits 1  */
+    flags_desc.fixed_value_bits    = 0x0;      /* bits 1  */
+    flags_desc.operation_size      = 0x0;      /* bits 1  */
+    flags_desc.granularity         = 0x0;      /* bits 1  */
+    if(i386_put_gdt_entry(rml_code_dsc, rml_base, rml_limit, &flags_desc)==0)
+    {
+orc:    goto orc; /* selector to GDT out of range */
+    }
+
+    rml_data_dsc = i386_find_empty_gdt_entry();
+    if(rml_data_dsc==0)
+    {
+        /* not enough space in GDT */
+nsgdtd: goto nsgdtd;
+        return;
+    }
+    flags_desc.type                = 0x2;      /* bits 4  */
+    if(i386_put_gdt_entry(rml_data_dsc, rml_base, rml_limit, &flags_desc)==0)
+    {
+ord:    goto ord; /* selector to GDT out of range */
+    }
+
+    
+    return __DP_YES;
+}
+
+static __DP_TYPE destroyRMDescriptors() {
+    /* deallocate gdt entries */
+    if(!i386_free_gdt_entry(rml_code_dsc))
+    {
+sorc:   goto sorc; /* selector to GDT out of range */
+    }
+    if(!i386_free_gdt_entry(rml_data_dsc))
+    {
+dorc:   goto dorc; /* selector to GDT out of range */
+    }
+}
 
 inline void *get_primary_rm_buffer() {
     return (void *)RM_INT_BUF_SPOT;
@@ -45,6 +116,7 @@ inline uint16_t get_primary_rm_buffer_size() {
  * This function presumes prepared real mode like descriptors for code (index 4 - selector 0x20) and data (index 3 - selector 0x18) in the GDT.
  */
 void BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
+    prepareRMDescriptors();
     struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
     *parret = *ir;
         /* copy desired code to first 64kB of RAM */
