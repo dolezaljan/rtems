@@ -53,7 +53,7 @@ static struct fb_fix_screeninfo fb_fix;
 
 uint16_t vbe_usedMode;
 
-inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t queriedVBEVersion) {
+inline uint32_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t queriedVBEVersion) {
     struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)get_primary_rm_buffer();
     struct interrupt_registers parret;
     parret.reg_eax = VBE_RetVBEConInf;
@@ -64,7 +64,8 @@ inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uin
     {
         strncpy((char *)&VBE_buffer->VbeSignature, VBE20plus_SIGNATURE, 4*sizeof(size_t));
     }
-    BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret);
+    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+	return -1;
     if((parret.reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         *infoBlock = *VBE_buffer;
@@ -72,14 +73,15 @@ inline uint16_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uin
     return (uint16_t)parret.reg_eax;
 }
 
-inline uint16_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t modeNumber){
+inline uint32_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t modeNumber){
     struct VBE_ModeInfoBlock *VBE_buffer = (struct VBE_ModeInfoBlock *)get_primary_rm_buffer();
     struct interrupt_registers parret;
     parret.reg_eax = VBE_RetVBEModInf;
     parret.reg_ecx = modeNumber;
     parret.reg_edi = (uint32_t)VBE_buffer;
     parret.reg_es = 0x0;
-    BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret);
+    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+	return -1;
     if((parret.reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         *infoBlock = *VBE_buffer;
@@ -87,7 +89,7 @@ inline uint16_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t
     return (uint16_t)parret.reg_eax;
 }
 
-inline uint16_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBlock){
+inline uint32_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBlock){
     struct VBE_CRTCInfoBlock *VBE_buffer = (struct VBE_CRTCInfoBlock *)get_primary_rm_buffer();
     struct interrupt_registers parret;
     /* copy CRTC */
@@ -96,32 +98,35 @@ inline uint16_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBl
     parret.reg_ebx = modeNumber;
     parret.reg_edi = (uint32_t)VBE_buffer;
     parret.reg_es = 0x0;
-    BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret);
+    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+	return -1;
     return (uint16_t)parret.reg_eax;
 }
 
-inline uint16_t VBECurrentMode(uint16_t *modeNumber){
+inline uint32_t VBECurrentMode(uint16_t *modeNumber){
     struct interrupt_registers parret;
     parret.reg_eax = VBE_RetCurVBEMod;
-    BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret);
+    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+	return -1;
     *modeNumber = (uint16_t)parret.reg_ebx;
     return (uint16_t)parret.reg_eax;
 }
 
-inline uint16_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t *secondsToTransferEDIDBlock, uint8_t *DDCLevelSupported){
+inline uint32_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t *secondsToTransferEDIDBlock, uint8_t *DDCLevelSupported){
     struct interrupt_registers parret;
     parret.reg_eax = VBE_DisDatCha;
     parret.reg_ebx = VBEDDC_Capabilities;
     parret.reg_ecx = controllerUnitNumber;
     parret.reg_edi = 0;
     parret.reg_es = 0;
-    BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret);
+    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+	return -1;
     *secondsToTransferEDIDBlock = (uint8_t)parret.reg_ebx >> 8;
     *DDCLevelSupported = (uint8_t)parret.reg_ebx;
     return (uint16_t)parret.reg_eax;
 }
 
-inline uint16_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNumber, union edid *buffer){
+inline uint32_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNumber, union edid *buffer){
     union edid *VBE_buffer = (union edid *)get_primary_rm_buffer();
     struct interrupt_registers parret;
     parret.reg_eax = VBE_DisDatCha;
@@ -130,7 +135,8 @@ inline uint16_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNum
     parret.reg_edx = EDIDBlockNumber;
     parret.reg_edi = (uint32_t)VBE_buffer;
     parret.reg_es = 0x0;
-    BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret);
+    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+	return -1;
     if((parret.reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         *buffer = *VBE_buffer;
