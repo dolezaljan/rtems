@@ -67,7 +67,7 @@ extern uint16_t get_primary_rm_buffer_size(void);
  * @param interruptNumber interrupt number to be called
  * @param ir pointer to structure containing registers to be passed to interrupt
  *        and to retrieve register content after call was made.
- * @return  0 call failed
+ * @return  0 call failed (GDT too small or pagin is on)
  *          1 call successful
  */
 extern int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir);

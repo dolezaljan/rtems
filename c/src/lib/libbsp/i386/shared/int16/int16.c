@@ -138,8 +138,17 @@ inline uint16_t get_primary_rm_buffer_size() {
 }
 
 int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
+    uint32_t pagingon;
     if(prepareRMDescriptors()!=__DP_YES)
 	return 0;
+    __asm__ volatile(   "\t"
+        "movl    %%cr0, %%eax\n\t"
+        "andl    %1, %%eax\n"
+        : "=a"(pagingon)
+        : "i"(CR0_PAGING)
+    );
+    if(pagingon)
+        return 0;
     uint16_t rml_code_dsc_selector = (rml_code_dsc_index<<3);
     uint16_t rml_data_dsc_selector = (rml_data_dsc_index<<3);
     struct interrupt_registers_preserve_spots *parret = (struct interrupt_registers_preserve_spots *)INT_REGS_SPOT;
@@ -147,25 +156,21 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         /* copy desired code to first 64kB of RAM */
     __asm__ volatile(   "\t"
         "movl    $intins, %%ecx\n\t"
-        "movb    %6, 0x1(%%ecx)\n\t" /* write interrupt number */
+        "movb    %5, 0x1(%%ecx)\n\t" /* write interrupt number */
         "movl    $rmlcsel, %%ecx\n\t"
-        "movw    %7, %%ax\n\t"
+        "movw    %6, %%ax\n\t"
         "movw    %%ax, 0x5(%%ecx)\n\t" /* write real mode like code selector */
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
         "movl    $cp_beg, %%esi\n\t"
         "movl    %0, %%edi\n\t"
         "rep movsb\n\t"
-        /* test that paging is off */
-        "movl    %%cr0, %%eax\n\t"
-        "testl   %3, %%eax\n"
-"pg_dis: jne     pg_dis\n\t" /* hopefuly no loader turns on paging */
         "cli\n\t"
         /* jump to copied function */
         "movl    %0, %%eax\n\t"
         "jmp     *%%eax\n"
         /* load 'real mode like' selectors */
-"cp_beg: movw    %8, %%ax\n\t"
+"cp_beg: movw    %7, %%ax\n\t"
         "movw    %%ax, %%ss\n\t"
         "movw    %%ax, %%ds\n\t"
         "movw    %%ax, %%es\n\t"
@@ -178,7 +183,7 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         ".code16\n\t"
         /* disable protected mode */
         "movl    %%cr0, %%eax\n\t"
-        "andl    %5, %%eax\n\t"
+        "andl    %4, %%eax\n\t"
         "movl    %%eax, %%cr0\n\t"
         /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
         /* preserve idtr */
@@ -236,7 +241,7 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
 "aftint:"
         /* return to protected mode */
         "movl    %%cr0, %%eax     \n\t"
-        "orl     %4, %%eax    \n\t"
+        "orl     %3, %%eax    \n\t"
         "movl    %%eax, %%cr0     \n\t"
         "ljmpl   $0x8,$cp_end \n\t"
         ".code32\n"
@@ -251,7 +256,7 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         "movl    %1+0x24, %%eax\n\t"
         "lidt    (%%eax)\n\t"
         : 
-        : "i"(INT_FNC_SPOT), "i"(INT_REGS_SPOT), "i"(INT_STACK_TOP), "i"(CR0_PAGING), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE), "a"(interruptNumber), "m"(rml_code_dsc_selector), "m"(rml_data_dsc_selector)
+        : "i"(INT_FNC_SPOT), "i"(INT_REGS_SPOT), "i"(INT_STACK_TOP), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE), "a"(interruptNumber), "m"(rml_code_dsc_selector), "m"(rml_data_dsc_selector)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
     return 1;
