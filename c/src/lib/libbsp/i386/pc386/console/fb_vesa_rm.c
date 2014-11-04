@@ -19,7 +19,7 @@
 
 /*
  *  Hardware is completely initialized upon boot of the system.
- *  Therefore there is no way to change graphic mode.
+ *  Therefore there is no way to change graphics mode later.
  *  
  *  Interrupt 0x10 is used for entering graphics BIOS.
  */
@@ -28,17 +28,11 @@
 #include <bsp/int16.h>
 
 #include <pthread.h>
-#include <string.h>
 
-#include <bsp.h>
-#include <libcpu/cpu.h>
 #include <rtems/libio.h>
 
 #include <rtems/fb.h>
 #include <rtems/framebuffer.h>
-#include <rtems/asm.h>
-
-#include <rtems/score/registers.h>
 
 #define FB_VESA_NAME    "FB_VESA_RM"
 
@@ -51,7 +45,7 @@ static pthread_mutex_t vesa_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct fb_var_screeninfo fb_var;
 static struct fb_fix_screeninfo fb_fix;
 
-uint16_t vbe_usedMode;
+static uint16_t vbe_usedMode;
 
 inline uint32_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t queriedVBEVersion) {
     struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)get_primary_rm_buffer();
@@ -157,7 +151,7 @@ struct modeParams {
     has to be zero. Mode number found is returned and also filled into
     'searchedResolution'. bpp is also filled into 'searchedResolution' if it
     was 0 before call. */
-uint16_t findModeByResolution(struct modeParams *modeList, uint8_t listLength, struct modeParams *searchedResolution) {
+static uint16_t findModeByResolution(struct modeParams *modeList, uint8_t listLength, struct modeParams *searchedResolution) {
     uint8_t i = 0;
     while(modeList[i].resX != searchedResolution->resX && i < listLength) {
         i++;
@@ -187,7 +181,7 @@ uint16_t findModeByResolution(struct modeParams *modeList, uint8_t listLength, s
 }
 
 /* returns mode number best fitting to monitor attached */
-uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLength) {
+static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLength) {
     union edid edid;
     uint8_t checksum = 0;
     uint8_t iterator = 0;
@@ -316,7 +310,7 @@ uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLength) {
     return (uint16_t)-1;
 }
 
-void vesa_realmode_bootup_init(){
+void vesa_realmode_bootup_init(void){
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)get_primary_rm_buffer();
     if(VBEControllerInformation(vib, 0x300) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
