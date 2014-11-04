@@ -13,12 +13,12 @@
 
 #include <bsp/int16.h>
 
-#define INT_REG_LEN 0x24
+#define INT_REG_LEN 0x2A
 struct interrupt_registers_preserve_spots { /* used for passing parameters, fetching results and preserving values */
     struct interrupt_registers inoutregs;       /* off 0x00 */
-    uint32_t reg_esp_bkp;                       /* off 0x1A */
-    uint16_t idtr_lim_bkp;                      /* off 0x1E */
-    uint32_t idtr_base_bkp;                     /* off 0x20 */
+    uint32_t reg_esp_bkp;                       /* off 0x20 */
+    uint16_t idtr_lim_bkp;                      /* off 0x24 */
+    uint32_t idtr_base_bkp;                     /* off 0x26 */
     /* if adding new element update INT_REG_LEN as well */
 }__attribute__((__packed__));
 
@@ -182,7 +182,7 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         "movl    %%eax, %%cr0\n\t"
         /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
         /* preserve idtr */
-        "movl    %1+0x1E, %%eax\n\t"
+        "movl    %1+0x24, %%eax\n\t"
         "sidt    (%%eax)\n\t"
         "movl    %0+(begidt-cp_beg), %%eax\n\t"
         "lidt    (%%eax)\n\t"
@@ -205,9 +205,12 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         "movl    0x08(%%esi), %%ecx\n\t"
         "movl    0x0C(%%esi), %%edx\n\t"
         "movl    0x14(%%esi), %%edi\n\t"
-        "movw    0x18(%%esi), %%es\n\t"
+        "movw    0x18(%%esi), %%ds\n\t"
+        "movw    0x1A(%%esi), %%es\n\t"
+        "movw    0x1C(%%esi), %%fs\n\t"
+        "movw    0x1E(%%esi), %%gs\n\t"
         /* backup stack pointer */
-        "movl    %%esp, 0x1A(%%esi)\n\t"
+        "movl    %%esp, 0x20(%%esi)\n\t"
         /* prepare esi register */
         "movl    0x10(%%esi), %%esi\n\t"
         /* establish rm stack */
@@ -224,9 +227,12 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         "movl    %%ecx,0x08(%%esi)\n\t"
         "movl    %%edx,0x0C(%%esi)\n\t"
         "movl    %%edi,0x14(%%esi)\n\t"
-        "movw    %%es, 0x18(%%esi)\n\t"
+        "movw    %%ds, 0x18(%%esi)\n\t"
+        "movw    %%es, 0x1A(%%esi)\n\t"
+        "movw    %%fs, 0x1C(%%esi)\n\t"
+        "movw    %%gs, 0x1E(%%esi)\n\t"
         /* restore original stack pointer */
-        "movl    0x1A(%%esi),%%esp\n\t"
+        "movl    0x20(%%esi),%%esp\n\t"
 "aftint:"
         /* return to protected mode */
         "movl    %%cr0, %%eax     \n\t"
@@ -242,7 +248,7 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         "movw    %%ax, %%fs\n\t"
         "movw    %%ax, %%gs\n\t"
         /* restore IDTR */
-        "movl    %1+0x1E, %%eax\n\t"
+        "movl    %1+0x24, %%eax\n\t"
         "lidt    (%%eax)\n\t"
         : 
         : "i"(INT_FNC_SPOT), "i"(INT_REGS_SPOT), "i"(INT_STACK_TOP), "i"(CR0_PAGING), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE), "a"(interruptNumber), "m"(rml_code_dsc_selector), "m"(rml_data_dsc_selector)
