@@ -13,6 +13,15 @@
 
 #include <bsp/int16.h>
 
+#define INT_REG_LEN 0x24
+struct interrupt_registers_preserve_spots { /* used for passing parameters, fetching results and preserving values */
+    struct interrupt_registers inoutregs;       /* off 0x00 */
+    uint32_t reg_esp_bkp;                       /* off 0x1A */
+    uint16_t idtr_lim_bkp;                      /* off 0x1E */
+    uint32_t idtr_base_bkp;                     /* off 0x20 */
+    /* if adding new element update INT_REG_LEN as well */
+}__attribute__((__packed__));
+
 /* addresses where we are going to put Interrupt buffer, parameter/returned/preserved values, stack and copy code for calling BIOS interrupt real mode interface */
 #define RM_INT_CALL_SPOT   0x1000
 #define RM_INT_BUF_SPOT RM_INT_CALL_SPOT
@@ -133,8 +142,8 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
 	return 0;
     uint16_t rml_code_dsc_selector = (rml_code_dsc_index<<3);
     uint16_t rml_data_dsc_selector = (rml_data_dsc_index<<3);
-    struct interrupt_registers *parret = (struct interrupt_registers *)INT_REGS_SPOT;
-    *parret = *ir;
+    struct interrupt_registers_preserve_spots *parret = (struct interrupt_registers_preserve_spots *)INT_REGS_SPOT;
+    parret->inoutregs = *ir;
         /* copy desired code to first 64kB of RAM */
     __asm__ volatile(   "\t"
         "movl    $intins, %%ecx\n\t"

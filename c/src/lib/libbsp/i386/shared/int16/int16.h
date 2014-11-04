@@ -24,7 +24,6 @@
 /* number of interrupt servicing video functions */
 #define INTERRUPT_NO_VIDEO_SERVICES 0x10
 
-#define INT_REG_LEN 0x24
 struct interrupt_registers { /* used for passing parameters, fetching results and preserving values */
     uint32_t reg_eax;                           /* off 0x0  */
     uint32_t reg_ebx;                           /* off 0x4  */
@@ -33,10 +32,6 @@ struct interrupt_registers { /* used for passing parameters, fetching results an
     uint32_t reg_esi;                           /* off 0x10 */
     uint32_t reg_edi;                           /* off 0x14 */
     uint16_t reg_es;                            /* off 0x18 */
-    uint32_t reg_esp_bkp;                       /* off 0x1A */
-    uint16_t idtr_lim_bkp;                      /* off 0x1E */
-    uint32_t idtr_base_bkp;                     /* off 0x20 */
-    /* if adding new element update INT_REG_LEN as well */
 }__attribute__((__packed__));
 
 /**
