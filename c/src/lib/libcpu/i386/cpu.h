@@ -346,8 +346,12 @@ int i386_segment_desc_in_use (unsigned short segment_selector_index);
 extern int i386_free_gdt_entry (unsigned short segment_selector);
 
 /**
- * C callable function finds empty descriptor in GDT.
+ * C callable function finds first empty descriptor in GDT.
  * Descriptor is considered empty if it is filled with zeros.
+ *
+ * If there is desire to find more than one empty descriptor at once
+ * it is necessary to fill found descriptor before trying to get
+ * another, otherwise same index is returned.
  *
  * @return  0 FAILED no empty descriptor
  *          <1;65535> segment_selector number as index to GDT
