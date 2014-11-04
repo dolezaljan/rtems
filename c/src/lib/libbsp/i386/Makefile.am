@@ -24,5 +24,9 @@ EXTRA_DIST += shared/irq/irq_init.c
 EXTRA_DIST += shared/pci/pcibios.h
 EXTRA_DIST += shared/pci/pcibios.c
 
+# shared/int16
+EXTRA_DIST += shared/int16/int16.h
+EXTRA_DIST += shared/int16/int16.c
+
 include $(top_srcdir)/../../../automake/subdirs.am
 include $(top_srcdir)/../../../automake/local.am

@@ -65,6 +65,10 @@ $(PROJECT_INCLUDE)/bsp/tty_drv.h: ../../i386/shared/comm/tty_drv.h $(PROJECT_INC
 	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/bsp/tty_drv.h
 PREINSTALL_FILES += $(PROJECT_INCLUDE)/bsp/tty_drv.h
 
+$(PROJECT_INCLUDE)/bsp/int16.h: ../../i386/shared/int16/int16.h $(PROJECT_INCLUDE)/bsp/$(dirstamp)
+	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/bsp/int16.h
+PREINSTALL_FILES += $(PROJECT_INCLUDE)/bsp/int16.h
+
 $(PROJECT_INCLUDE)/bsp/irq-generic.h: ../../shared/include/irq-generic.h $(PROJECT_INCLUDE)/bsp/$(dirstamp)
 	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/bsp/irq-generic.h
 PREINSTALL_FILES += $(PROJECT_INCLUDE)/bsp/irq-generic.h
