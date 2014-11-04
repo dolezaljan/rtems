@@ -259,6 +259,7 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         : "i"(INT_FNC_SPOT), "i"(INT_REGS_SPOT), "i"(INT_STACK_TOP), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE), "a"(interruptNumber), "m"(rml_code_dsc_selector), "m"(rml_data_dsc_selector)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
+    *ir = parret->inoutregs;
     return 1;
 }
 
