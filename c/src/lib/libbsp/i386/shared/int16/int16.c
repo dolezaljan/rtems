@@ -42,18 +42,18 @@ static __DP_TYPE descsPrepared = __DP_NO;
 /* rml - real mode alike */
 #define rml_base  0x0
 #define rml_limit 0xFFFF
-static uint16_t rml_code_dsc = 0;
-static uint16_t rml_data_dsc = 0;
+static uint16_t rml_code_dsc_index = 0;
+static uint16_t rml_data_dsc_index = 0;
 
 static __DP_TYPE destroyRMDescriptors(void) {
     __DP_TYPE ret = __DP_OK;
     /* deallocate gdt entries */
-    if(!i386_free_gdt_entry(rml_code_dsc))
+    if(!i386_free_gdt_entry(rml_code_dsc_index))
     {
         /* selector to GDT out of range */
         ret = __DP_FAIL;
     }
-    if(!i386_free_gdt_entry(rml_data_dsc))
+    if(!i386_free_gdt_entry(rml_data_dsc_index))
     {
         /* selector to GDT out of range */
         ret = __DP_FAIL;
@@ -73,8 +73,8 @@ static __DP_TYPE prepareRMDescriptors (void) {
     if(descsPrepared == __DP_YES)
         return descsPrepared;
     /* create 'real mode like' segment descriptors, for switching to real mode */
-    rml_code_dsc = i386_find_empty_gdt_entry();
-    if(rml_code_dsc==0)
+    rml_code_dsc_index = i386_find_empty_gdt_entry();
+    if(rml_code_dsc_index==0)
     {
         /* not enough space in GDT */
         descsPrepared = __DP_FAIL;
@@ -90,7 +90,7 @@ static __DP_TYPE prepareRMDescriptors (void) {
     flags_desc.fixed_value_bits    = 0x0;      /* bits 1  */
     flags_desc.operation_size      = 0x0;      /* bits 1  */
     flags_desc.granularity         = 0x0;      /* bits 1  */
-    if(i386_put_gdt_entry(rml_code_dsc, rml_base, rml_limit, &flags_desc)==0)
+    if(i386_put_gdt_entry(rml_code_dsc_index, rml_base, rml_limit, &flags_desc)==0)
     {
         /* selector to GDT out of range */
         destroyRMDescriptors();
@@ -98,8 +98,8 @@ static __DP_TYPE prepareRMDescriptors (void) {
         return descsPrepared;
     }
 
-    rml_data_dsc = i386_find_empty_gdt_entry();
-    if(rml_data_dsc==0)
+    rml_data_dsc_index = i386_find_empty_gdt_entry();
+    if(rml_data_dsc_index==0)
     {
         /* not enough space in GDT for both descriptors */
         destroyRMDescriptors();
@@ -108,7 +108,7 @@ static __DP_TYPE prepareRMDescriptors (void) {
     }
 
     flags_desc.type                = 0x2;      /* bits 4  */
-    if(i386_put_gdt_entry(rml_data_dsc, rml_base, rml_limit, &flags_desc)==0)
+    if(i386_put_gdt_entry(rml_data_dsc_index, rml_base, rml_limit, &flags_desc)==0)
     {
         /* selector to GDT out of range */
         destroyRMDescriptors();
