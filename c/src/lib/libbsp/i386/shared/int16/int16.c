@@ -13,12 +13,17 @@
 
 #include <bsp/int16.h>
 
-#define INT_REG_LEN 0x2A
+#define INT_REG_LEN 0x34
 struct interrupt_registers_preserve_spots { /* used for passing parameters, fetching results and preserving values */
     struct interrupt_registers inoutregs;       /* off 0x00 */
     uint32_t reg_esp_bkp;                       /* off 0x20 */
     uint16_t idtr_lim_bkp;                      /* off 0x24 */
     uint32_t idtr_base_bkp;                     /* off 0x26 */
+    uint16_t ds_bkp;                            /* off 0x2A */
+    uint16_t es_bkp;                            /* off 0x2C */
+    uint16_t fs_bkp;                            /* off 0x2E */
+    uint16_t gs_bkp;                            /* off 0x30 */
+    uint16_t ss_bkp;                            /* off 0x32 */
     /* if adding new element update INT_REG_LEN as well */
 }__attribute__((__packed__));
 
@@ -160,6 +165,16 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         "movl    $rmlcsel, %%ecx\n\t"
         "movw    %6, %%ax\n\t"
         "movw    %%ax, 0x5(%%ecx)\n\t" /* write real mode like code selector */
+        /* backup current selectors */
+        "movw    %%cs, %%ax\n\t"
+        "movl    $curcs, %%ecx\n\t"
+        "movw    %%ax, 0x6(%%ecx)\n\t"
+        "movl    %1, %%esi\n\t"
+        "movw    %%ds, 0x2A(%%esi)\n\t"
+        "movw    %%es, 0x2C(%%esi)\n\t"
+        "movw    %%fs, 0x2E(%%esi)\n\t"
+        "movw    %%gs, 0x30(%%esi)\n\t"
+        "movw    %%ss, 0x32(%%esi)\n\t"
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
         "movl    $cp_beg, %%esi\n\t"
@@ -243,15 +258,15 @@ int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
         "movl    %%cr0, %%eax     \n\t"
         "orl     %3, %%eax    \n\t"
         "movl    %%eax, %%cr0     \n\t"
-        "ljmpl   $0x8,$cp_end \n\t"
+"curcs:  ljmpl   $0x0,$cp_end \n\t"
         ".code32\n"
         /* reload segmentation registers */
-"cp_end: movw    $0x10,%%ax\n\t"
-        "movw    %%ax, %%ss\n\t"
-        "movw    %%ax, %%ds\n\t"
-        "movw    %%ax, %%es\n\t"
-        "movw    %%ax, %%fs\n\t"
-        "movw    %%ax, %%gs\n\t"
+"cp_end: movl    %1, %%esi\n\t"
+        "movw    0x2A(%%esi), %%ds\n\t"
+        "movw    0x2C(%%esi), %%es\n\t"
+        "movw    0x2E(%%esi), %%fs\n\t"
+        "movw    0x30(%%esi), %%gs\n\t"
+        "movw    0x32(%%esi), %%ss\n\t"
         /* restore IDTR */
         "movl    %1+0x24, %%eax\n\t"
         "lidt    (%%eax)\n\t"

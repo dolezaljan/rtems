@@ -25,16 +25,16 @@
 #define INTERRUPT_NO_VIDEO_SERVICES 0x10
 
 struct interrupt_registers { /* used for passing parameters, fetching results and preserving values */
-    uint32_t reg_eax;                           /* off 0x0  */
-    uint32_t reg_ebx;                           /* off 0x4  */
-    uint32_t reg_ecx;                           /* off 0x8  */
-    uint32_t reg_edx;                           /* off 0xC  */
-    uint32_t reg_esi;                           /* off 0x10 */
-    uint32_t reg_edi;                           /* off 0x14 */
-    uint16_t reg_ds;                            /* off 0x18 */
-    uint16_t reg_es;                            /* off 0x1A */
-    uint16_t reg_fs;                            /* off 0x1C */
-    uint16_t reg_gs;                            /* off 0x1E */
+    uint32_t reg_eax;
+    uint32_t reg_ebx;
+    uint32_t reg_ecx;
+    uint32_t reg_edx;
+    uint32_t reg_esi;
+    uint32_t reg_edi;
+    uint16_t reg_ds;
+    uint16_t reg_es;
+    uint16_t reg_fs;
+    uint16_t reg_gs;
 }__attribute__((__packed__));
 
 /**
