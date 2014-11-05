@@ -48,7 +48,7 @@ static struct fb_fix_screeninfo fb_fix;
 static uint16_t vbe_usedMode;
 
 inline uint32_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t queriedVBEVersion) {
-    struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)get_primary_rm_buffer();
+    struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)i386_get_primary_rm_buffer();
     struct interrupt_registers parret;
     parret.reg_eax = VBE_RetVBEConInf;
     parret.reg_edi = (uint32_t)VBE_buffer;
@@ -58,7 +58,7 @@ inline uint32_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uin
     {
         strncpy((char *)&VBE_buffer->VbeSignature, VBE20plus_SIGNATURE, 4*sizeof(size_t));
     }
-    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     if((parret.reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
@@ -68,13 +68,13 @@ inline uint32_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uin
 }
 
 inline uint32_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t modeNumber){
-    struct VBE_ModeInfoBlock *VBE_buffer = (struct VBE_ModeInfoBlock *)get_primary_rm_buffer();
+    struct VBE_ModeInfoBlock *VBE_buffer = (struct VBE_ModeInfoBlock *)i386_get_primary_rm_buffer();
     struct interrupt_registers parret;
     parret.reg_eax = VBE_RetVBEModInf;
     parret.reg_ecx = modeNumber;
     parret.reg_edi = (uint32_t)VBE_buffer;
     parret.reg_es = 0x0;
-    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     if((parret.reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
@@ -84,7 +84,7 @@ inline uint32_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t
 }
 
 inline uint32_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBlock){
-    struct VBE_CRTCInfoBlock *VBE_buffer = (struct VBE_CRTCInfoBlock *)get_primary_rm_buffer();
+    struct VBE_CRTCInfoBlock *VBE_buffer = (struct VBE_CRTCInfoBlock *)i386_get_primary_rm_buffer();
     struct interrupt_registers parret;
     /* copy CRTC */
     *VBE_buffer = *infoBlock;
@@ -92,7 +92,7 @@ inline uint32_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBl
     parret.reg_ebx = modeNumber;
     parret.reg_edi = (uint32_t)VBE_buffer;
     parret.reg_es = 0x0;
-    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     return (uint16_t)parret.reg_eax;
 }
@@ -100,7 +100,7 @@ inline uint32_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBl
 inline uint32_t VBECurrentMode(uint16_t *modeNumber){
     struct interrupt_registers parret;
     parret.reg_eax = VBE_RetCurVBEMod;
-    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     *modeNumber = (uint16_t)parret.reg_ebx;
     return (uint16_t)parret.reg_eax;
@@ -113,7 +113,7 @@ inline uint32_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t 
     parret.reg_ecx = controllerUnitNumber;
     parret.reg_edi = 0;
     parret.reg_es = 0;
-    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     *secondsToTransferEDIDBlock = (uint8_t)parret.reg_ebx >> 8;
     *DDCLevelSupported = (uint8_t)parret.reg_ebx;
@@ -121,7 +121,7 @@ inline uint32_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t 
 }
 
 inline uint32_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNumber, union edid *buffer){
-    union edid *VBE_buffer = (union edid *)get_primary_rm_buffer();
+    union edid *VBE_buffer = (union edid *)i386_get_primary_rm_buffer();
     struct interrupt_registers parret;
     parret.reg_eax = VBE_DisDatCha;
     parret.reg_ebx = VBEDDC_ReadEDID;
@@ -129,7 +129,7 @@ inline uint32_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNum
     parret.reg_edx = EDIDBlockNumber;
     parret.reg_edi = (uint32_t)VBE_buffer;
     parret.reg_es = 0x0;
-    if(BIOSinterruptcall(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     if((parret.reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
@@ -311,12 +311,11 @@ static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLengt
 }
 
 void vesa_realmode_bootup_init(void){
-    struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)get_primary_rm_buffer();
+    struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)i386_get_primary_rm_buffer();
     if(VBEControllerInformation(vib, 0x300) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         printk("Function 00h (read VBE info block) not supported.\n");
     }
-
 /*  Helper array is later filled with mode numbers and their parameters
     sorted from the biggest values to the smalest where priorities of
     parameters are from the highest to the lowest: resolution X,
@@ -350,7 +349,7 @@ void vesa_realmode_bootup_init(void){
             sortModeParams[iterator].modeNumber = 0;
     }
 
-    struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)get_primary_rm_buffer();
+    struct VBE_ModeInfoBlock *mib = (struct VBE_ModeInfoBlock *)i386_get_primary_rm_buffer();
     iterator = 0;
     uint8_t nextFilteredMode = 0;
     uint16_t required_mode_attributes = VBE_modSupInHWMask | VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
@@ -443,7 +442,7 @@ void vesa_realmode_bootup_init(void){
     }
 
     /* set selected mode */
-    ret_vbe = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(get_primary_rm_buffer()));
+    ret_vbe = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(i386_get_primary_rm_buffer()));
     if(ret_vbe>>8 == VBE_callFailed)
     {
         printk("VBE: Requested mode is not available.");

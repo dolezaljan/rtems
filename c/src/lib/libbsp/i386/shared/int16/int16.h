@@ -47,14 +47,14 @@ struct interrupt_registers { /* used for passing parameters, fetching results an
  *
  * @return pointer to buffer
  */
-extern void *get_primary_rm_buffer(void);
+extern void *i386_get_primary_rm_buffer(void);
 
 /**
  * returns size of real mode buffer
  *
  * @return size of buffer
  */
-extern uint16_t get_primary_rm_buffer_size(void);
+extern uint16_t i386_get_primary_rm_buffer_size(void);
 
 /* if there is ever need to have more buffers or setting size of the buffer,
  * feel free to modify the code */
@@ -70,5 +70,5 @@ extern uint16_t get_primary_rm_buffer_size(void);
  * @return  0 call failed (GDT too small or pagin is on)
  *          1 call successful
  */
-extern int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir);
+extern int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers *ir);
 

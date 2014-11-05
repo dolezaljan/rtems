@@ -39,7 +39,7 @@ struct interrupt_registers_preserve_spots { /* used for passing parameters, fetc
 /******************************
  * INT_BUF          * 512 B   *
  ******************************
- * INT_REGs         * 36 B    *
+ * INT_REGs         * 52 B    *
  ******************************
  * INT_FNC          *         *
  ******************** 0x500 B *
@@ -134,15 +134,15 @@ static __DP_TYPE prepareRMDescriptors (void) {
     return descsPrepared;
 }
 
-inline void *get_primary_rm_buffer() {
+inline void *i386_get_primary_rm_buffer() {
     return (void *)RM_INT_BUF_SPOT;
 }
 
-inline uint16_t get_primary_rm_buffer_size() {
+inline uint16_t i386_get_primary_rm_buffer_size() {
     return RM_INT_BUF_LEN;
 }
 
-int BIOSinterruptcall(uint8_t interruptNumber, struct interrupt_registers *ir){
+int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers *ir){
     uint32_t pagingon;
     if(prepareRMDescriptors()!=__DP_YES)
 	return 0;
