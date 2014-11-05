@@ -51,8 +51,10 @@ inline uint32_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uin
     struct VBE_VbeInfoBlock *VBE_buffer = (struct VBE_VbeInfoBlock *)i386_get_primary_rm_buffer();
     struct interrupt_registers parret;
     parret.reg_eax = VBE_RetVBEConInf;
-    parret.reg_edi = (uint32_t)VBE_buffer;
-    parret.reg_es = 0x0;
+    unsigned short seg, off;
+    i386_Physical_to_real_mode_ptr(VBE_buffer, &seg, &off);
+    parret.reg_edi = (uint32_t)off;
+    parret.reg_es = seg;
     /* indicate to graphic's bios that VBE 2.0 extended information is desired */
     if(queriedVBEVersion >= 0x200)
     {
@@ -72,8 +74,10 @@ inline uint32_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t
     struct interrupt_registers parret;
     parret.reg_eax = VBE_RetVBEModInf;
     parret.reg_ecx = modeNumber;
-    parret.reg_edi = (uint32_t)VBE_buffer;
-    parret.reg_es = 0x0;
+    unsigned short seg, off;
+    i386_Physical_to_real_mode_ptr(VBE_buffer, &seg, &off);
+    parret.reg_edi = (uint32_t)off;
+    parret.reg_es = seg;
     if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     if((parret.reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
@@ -90,8 +94,10 @@ inline uint32_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBl
     *VBE_buffer = *infoBlock;
     parret.reg_eax = VBE_SetVBEMod;
     parret.reg_ebx = modeNumber;
-    parret.reg_edi = (uint32_t)VBE_buffer;
-    parret.reg_es = 0x0;
+    unsigned short seg, off;
+    i386_Physical_to_real_mode_ptr(VBE_buffer, &seg, &off);
+    parret.reg_edi = (uint32_t)off;
+    parret.reg_es = seg;
     if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     return (uint16_t)parret.reg_eax;
@@ -127,8 +133,10 @@ inline uint32_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNum
     parret.reg_ebx = VBEDDC_ReadEDID;
     parret.reg_ecx = controllerUnitNumber;
     parret.reg_edx = EDIDBlockNumber;
-    parret.reg_edi = (uint32_t)VBE_buffer;
-    parret.reg_es = 0x0;
+    unsigned short seg, off;
+    i386_Physical_to_real_mode_ptr(VBE_buffer, &seg, &off);
+    parret.reg_edi = (uint32_t)off;
+    parret.reg_es = seg;
     if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     if((parret.reg_eax & 0xFFFF) == (VBE_callSuccessful<<8 | VBE_functionSupported))
