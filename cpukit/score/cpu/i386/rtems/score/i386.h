@@ -195,6 +195,21 @@ void *i386_Real_mode_ptr_to_physical(
 );
 
 /*
+ *  i386_Physical_to_real_mode_ptr
+ *
+ *  Retreives real mode pointer elements {segmnet, offset} from physical address.
+ *  input  - address
+ *  output - segment, offset
+ *  return  0 address not convertible, must be less than 0x10FFEF
+ *          1 segment and offset extracted 
+ */
+int i386_Physical_to_real_mode_ptr(
+  void *address,
+  unsigned short *segment,
+  unsigned short *offset 
+);
+
+/*
  *  "Simpler" names for a lot of the things defined in this file
  */
 
