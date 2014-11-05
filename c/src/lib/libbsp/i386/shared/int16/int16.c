@@ -12,6 +12,7 @@
  */
 
 #include <bsp/int16.h>
+#include <string.h>
 
 #define INT_REG_LEN 0x34
 struct interrupt_registers_preserve_spots { /* used for passing parameters, fetching results and preserving values */
@@ -96,6 +97,7 @@ static __DP_TYPE prepareRMDescriptors (void) {
     }
     
     segment_descriptors flags_desc;
+    memset(&flags_desc, 0, sizeof(flags_desc));
     flags_desc.type                = 0xE;      /* bits 4  */
     flags_desc.descriptor_type     = 0x1;      /* bits 1  */
     flags_desc.privilege           = 0x0;      /* bits 2  */

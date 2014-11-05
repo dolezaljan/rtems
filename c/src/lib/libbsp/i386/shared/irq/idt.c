@@ -288,6 +288,7 @@ int i386_set_gdt_entry (unsigned short segment_selector_index, unsigned base,
 			unsigned limit)
 {
     segment_descriptors         gdt_entry;
+    memset(&gdt_entry, 0, sizeof(gdt_entry));
 
     i386_fill_segment_desc_limit(limit, &gdt_entry);
     i386_fill_segment_desc_base(base, &gdt_entry);
