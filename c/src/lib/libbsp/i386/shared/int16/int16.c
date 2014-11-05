@@ -163,15 +163,15 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* copy desired code to first 64kB of RAM */
     __asm__ volatile(   "\t"
         "movl    $intins, %%ecx\n\t"
-        "movb    %5, 0x1(%%ecx)\n\t" /* write interrupt number */
+        "movb    %[int_no], 0x1(%%ecx)\n\t" /* write interrupt number */
         "movl    $rmlcsel, %%ecx\n\t"
-        "movw    %6, %%ax\n\t"
+        "movw    %[rml_code_sel], %%ax\n\t"
         "movw    %%ax, 0x5(%%ecx)\n\t" /* write real mode like code selector */
         /* backup current selectors */
         "movw    %%cs, %%ax\n\t"
         "movl    $curcs, %%ecx\n\t"
         "movw    %%ax, 0x6(%%ecx)\n\t"
-        "movl    %1, %%esi\n\t"
+        "movl    %[regs_spot], %%esi\n\t"
         "movw    %%ds, 0x2A(%%esi)\n\t"
         "movw    %%es, 0x2C(%%esi)\n\t"
         "movw    %%fs, 0x2E(%%esi)\n\t"
@@ -180,14 +180,14 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
         "movl    $cp_beg, %%esi\n\t"
-        "movl    %0, %%edi\n\t"
+        "movl    %[fnc_spot], %%edi\n\t"
         "rep movsb\n\t"
         "cli\n\t"
         /* jump to copied function */
-        "movl    %0, %%eax\n\t"
+        "movl    %[fnc_spot], %%eax\n\t"
         "jmp     *%%eax\n"
         /* load 'real mode like' selectors */
-"cp_beg: movw    %7, %%ax\n\t"
+"cp_beg: movw    %[rml_data_sel], %%ax\n\t"
         "movw    %%ax, %%ss\n\t"
         "movw    %%ax, %%ds\n\t"
         "movw    %%ax, %%es\n\t"
@@ -195,22 +195,22 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    %%ax, %%gs\n\t"
 
         /* load 'real mode like' code selector */
-"rmlcsel:ljmp    $0x00, %0+(cs_real-cp_beg)\n"
+"rmlcsel:ljmp    $0x00, %[fnc_spot]+(cs_real-cp_beg)\n"
 "cs_real:"
         ".code16\n\t"
         /* disable protected mode */
         "movl    %%cr0, %%eax\n\t"
-        "andl    %4, %%eax\n\t"
+        "andl    %[cr0_prot_dis], %%eax\n\t"
         "movl    %%eax, %%cr0\n\t"
         /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
         /* preserve idtr */
-        "movl    %1+0x24, %%eax\n\t"
+        "movl    %[regs_spot]+0x24, %%eax\n\t"
         "sidt    (%%eax)\n\t"
-        "movl    %0+(begidt-cp_beg), %%eax\n\t"
+        "movl    %[fnc_spot]+(begidt-cp_beg), %%eax\n\t"
         "lidt    (%%eax)\n\t"
         /* flush prefetch queue by far jumping */
         /* change selector in segmentation register to correct real mode style segment */
-        "ljmp    $0x0, %0+(dsels-cp_beg)\n"
+        "ljmp    $0x0, %[fnc_spot]+(dsels-cp_beg)\n"
         /* limit and base for realmode interrupt descriptor table */
 "begidt:"
         ".word 0x3FF\n\t"
@@ -221,7 +221,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "mov     %%ax, %%fs\n\t"
         "mov     %%ax, %%gs\n\t"
         /* fill registers with parameters */
-        "movl    %1, %%esi\n\t"
+        "movl    %[regs_spot], %%esi\n\t"
         "movl    0x00(%%esi), %%eax\n\t"
         "movl    0x04(%%esi), %%ebx\n\t"
         "movl    0x08(%%esi), %%ecx\n\t"
@@ -236,12 +236,12 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* prepare esi register */
         "movl    0x10(%%esi), %%esi\n\t"
         /* establish rm stack */
-        "movl    %2, %%esp\n\t"
+        "movl    %[stack_top], %%esp\n\t"
 "intins: int     $0x0\n\t"
 
         /* fill return structure */
         "pushl   %%esi\n\t"
-        "movl    %1, %%esi\n\t"
+        "movl    %[regs_spot], %%esi\n\t"
         "movl    %%eax,0x00(%%esi)\n\t"
         "popl    %%eax\n\t"
         "movl    %%eax,0x10(%%esi)\n\t" /* store returned esi */
@@ -258,22 +258,22 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
 "aftint:"
         /* return to protected mode */
         "movl    %%cr0, %%eax     \n\t"
-        "orl     %3, %%eax    \n\t"
+        "orl     %[cr0_prot_ena], %%eax    \n\t"
         "movl    %%eax, %%cr0     \n\t"
 "curcs:  ljmpl   $0x0,$cp_end \n\t"
         ".code32\n"
         /* reload segmentation registers */
-"cp_end: movl    %1, %%esi\n\t"
+"cp_end: movl    %[regs_spot], %%esi\n\t"
         "movw    0x2A(%%esi), %%ds\n\t"
         "movw    0x2C(%%esi), %%es\n\t"
         "movw    0x2E(%%esi), %%fs\n\t"
         "movw    0x30(%%esi), %%gs\n\t"
         "movw    0x32(%%esi), %%ss\n\t"
         /* restore IDTR */
-        "movl    %1+0x24, %%eax\n\t"
+        "movl    %[regs_spot]+0x24, %%eax\n\t"
         "lidt    (%%eax)\n\t"
         : 
-        : "i"(INT_FNC_SPOT), "i"(INT_REGS_SPOT), "i"(INT_STACK_TOP), "i"(CR0_PROTECTION_ENABLE), "i"(~CR0_PROTECTION_ENABLE), "a"(interruptNumber), "m"(rml_code_dsc_selector), "m"(rml_data_dsc_selector)
+        : [fnc_spot]"i"(INT_FNC_SPOT), [regs_spot]"i"(INT_REGS_SPOT), [stack_top]"i"(INT_STACK_TOP), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE), [int_no]"a"(interruptNumber), [rml_code_sel]"m"(rml_code_dsc_selector), [rml_data_sel]"m"(rml_data_dsc_selector)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
     *ir = parret->inoutregs;
