@@ -203,9 +203,19 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movl    %[fnc_spot], %%edi\n\t"
         "rep movsb\n\t"
         "cli\n\t"
+        /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
+        /* preserve idtr */
+        "movl    %[regs_spot]+"BKP_IDTR_LIM", %%eax\n\t"
+        "sidt    (%%eax)\n\t"
+        "movl    $rmidt, %%eax\n\t"
+        "lidt    (%%eax)\n\t"
         /* jump to copied function */
         "movl    %[fnc_spot], %%eax\n\t"
         "jmp     *%%eax\n"
+        /* limit and base for realmode interrupt descriptor table */
+"rmidt:"
+        ".word 0x3FF\n\t"
+        ".long 0\n\t"
         /* load 'real mode like' selectors */
 "cp_beg: movw    %[rml_data_sel], %%ax\n\t"
         "movw    %%ax, %%ss\n\t"
@@ -222,19 +232,9 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movl    %%cr0, %%eax\n\t"
         "andl    %[cr0_prot_dis], %%eax\n\t"
         "movl    %%eax, %%cr0\n\t"
-        /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
-        /* preserve idtr */
-        "movl    %[regs_spot]+"BKP_IDTR_LIM", %%eax\n\t"
-        "sidt    (%%eax)\n\t"
-        "movl    %[fnc_spot]+(begidt-cp_beg), %%eax\n\t"
-        "lidt    (%%eax)\n\t"
         /* flush prefetch queue by far jumping */
         /* change selector in segmentation register to correct real mode style segment */
         "ljmp    $0x0, %[fnc_spot]+(dsels-cp_beg)\n"
-        /* limit and base for realmode interrupt descriptor table */
-"begidt:"
-        ".word 0x3FF\n\t"
-        ".long 0\n\t"
 "dsels:  xor     %%ax, %%ax\n\t"
         "mov     %%ax, %%ss\n\t"
         "mov     %%ax, %%ds\n\t"
