@@ -14,18 +14,38 @@
 #include <bsp/int16.h>
 #include <string.h>
 
-#define INT_REG_LEN 0x34
+#define IR_EAX_OFF      "0x00"
+#define IR_EBX_OFF      "0x04"
+#define IR_ECX_OFF      "0x08"
+#define IR_EDX_OFF      "0x0C"
+#define IR_ESI_OFF      "0x10"
+#define IR_EDI_OFF      "0x14"
+#define IR_DS_OFF       "0x18"
+#define IR_ES_OFF       "0x1A"
+#define IR_FS_OFF       "0x1C"
+#define IR_GS_OFF       "0x1E"
+
+#define BKP_ESP_OFF     "0x20"
+#define BKP_IDTR_LIM    "0x24"
+#define BKP_IDTR_BASE   "0x26"
+#define BKP_DS_OFF      "0x2A"
+#define BKP_ES_OFF      "0x2C"
+#define BKP_FS_OFF      "0x2E"
+#define BKP_GS_OFF      "0x30"
+#define BKP_SS_OFF      "0x32"
+
+#define INT_REG_LEN     0x34
 struct interrupt_registers_preserve_spots { /* used for passing parameters, fetching results and preserving values */
-    struct interrupt_registers inoutregs;       /* off 0x00 */
-    uint32_t reg_esp_bkp;                       /* off 0x20 */
-    uint16_t idtr_lim_bkp;                      /* off 0x24 */
-    uint32_t idtr_base_bkp;                     /* off 0x26 */
-    uint16_t ds_bkp;                            /* off 0x2A */
-    uint16_t es_bkp;                            /* off 0x2C */
-    uint16_t fs_bkp;                            /* off 0x2E */
-    uint16_t gs_bkp;                            /* off 0x30 */
-    uint16_t ss_bkp;                            /* off 0x32 */
-    /* if adding new element update INT_REG_LEN as well */
+    struct interrupt_registers inoutregs;
+    uint32_t reg_esp_bkp;
+    uint16_t idtr_lim_bkp;
+    uint32_t idtr_base_bkp;
+    uint16_t ds_bkp;
+    uint16_t es_bkp;
+    uint16_t fs_bkp;
+    uint16_t gs_bkp;
+    uint16_t ss_bkp;
+    /* if modifying update INT_REG_LEN and offset definitions as well */
 }__attribute__((__packed__));
 
 /* addresses where we are going to put Interrupt buffer, parameter/returned/preserved values, stack and copy code for calling BIOS interrupt real mode interface */
@@ -172,11 +192,11 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movl    $curcs, %%ecx\n\t"
         "movw    %%ax, 0x6(%%ecx)\n\t"
         "movl    %[regs_spot], %%esi\n\t"
-        "movw    %%ds, 0x2A(%%esi)\n\t"
-        "movw    %%es, 0x2C(%%esi)\n\t"
-        "movw    %%fs, 0x2E(%%esi)\n\t"
-        "movw    %%gs, 0x30(%%esi)\n\t"
-        "movw    %%ss, 0x32(%%esi)\n\t"
+        "movw    %%ds, "BKP_DS_OFF"(%%esi)\n\t"
+        "movw    %%es, "BKP_ES_OFF"(%%esi)\n\t"
+        "movw    %%fs, "BKP_FS_OFF"(%%esi)\n\t"
+        "movw    %%gs, "BKP_GS_OFF"(%%esi)\n\t"
+        "movw    %%ss, "BKP_SS_OFF"(%%esi)\n\t"
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
         "movl    $cp_beg, %%esi\n\t"
@@ -204,7 +224,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movl    %%eax, %%cr0\n\t"
         /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
         /* preserve idtr */
-        "movl    %[regs_spot]+0x24, %%eax\n\t"
+        "movl    %[regs_spot]+"BKP_IDTR_LIM", %%eax\n\t"
         "sidt    (%%eax)\n\t"
         "movl    %[fnc_spot]+(begidt-cp_beg), %%eax\n\t"
         "lidt    (%%eax)\n\t"
@@ -222,19 +242,19 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "mov     %%ax, %%gs\n\t"
         /* fill registers with parameters */
         "movl    %[regs_spot], %%esi\n\t"
-        "movl    0x00(%%esi), %%eax\n\t"
-        "movl    0x04(%%esi), %%ebx\n\t"
-        "movl    0x08(%%esi), %%ecx\n\t"
-        "movl    0x0C(%%esi), %%edx\n\t"
-        "movl    0x14(%%esi), %%edi\n\t"
-        "movw    0x18(%%esi), %%ds\n\t"
-        "movw    0x1A(%%esi), %%es\n\t"
-        "movw    0x1C(%%esi), %%fs\n\t"
-        "movw    0x1E(%%esi), %%gs\n\t"
+        "movl    "IR_EAX_OFF"(%%esi), %%eax\n\t"
+        "movl    "IR_EBX_OFF"(%%esi), %%ebx\n\t"
+        "movl    "IR_ECX_OFF"(%%esi), %%ecx\n\t"
+        "movl    "IR_EDX_OFF"(%%esi), %%edx\n\t"
+        "movl    "IR_EDI_OFF"(%%esi), %%edi\n\t"
+        "movw    " IR_DS_OFF"(%%esi), %%ds\n\t"
+        "movw    " IR_ES_OFF"(%%esi), %%es\n\t"
+        "movw    " IR_FS_OFF"(%%esi), %%fs\n\t"
+        "movw    " IR_GS_OFF"(%%esi), %%gs\n\t"
         /* backup stack pointer */
-        "movl    %%esp, 0x20(%%esi)\n\t"
+        "movl    %%esp, "BKP_ESP_OFF"(%%esi)\n\t"
         /* prepare esi register */
-        "movl    0x10(%%esi), %%esi\n\t"
+        "movl    "IR_ESI_OFF"(%%esi), %%esi\n\t"
         /* establish rm stack */
         "movl    %[stack_top], %%esp\n\t"
 "intins: int     $0x0\n\t"
@@ -242,19 +262,19 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* fill return structure */
         "pushl   %%esi\n\t"
         "movl    %[regs_spot], %%esi\n\t"
-        "movl    %%eax,0x00(%%esi)\n\t"
+        "movl    %%eax,"IR_EAX_OFF"(%%esi)\n\t"
         "popl    %%eax\n\t"
-        "movl    %%eax,0x10(%%esi)\n\t" /* store returned esi */
-        "movl    %%ebx,0x04(%%esi)\n\t"
-        "movl    %%ecx,0x08(%%esi)\n\t"
-        "movl    %%edx,0x0C(%%esi)\n\t"
-        "movl    %%edi,0x14(%%esi)\n\t"
-        "movw    %%ds, 0x18(%%esi)\n\t"
-        "movw    %%es, 0x1A(%%esi)\n\t"
-        "movw    %%fs, 0x1C(%%esi)\n\t"
-        "movw    %%gs, 0x1E(%%esi)\n\t"
+        "movl    %%eax,"IR_ESI_OFF"(%%esi)\n\t"
+        "movl    %%ebx,"IR_EBX_OFF"(%%esi)\n\t"
+        "movl    %%ecx,"IR_ECX_OFF"(%%esi)\n\t"
+        "movl    %%edx,"IR_EDX_OFF"(%%esi)\n\t"
+        "movl    %%edi,"IR_EDI_OFF"(%%esi)\n\t"
+        "movw    %%ds, " IR_DS_OFF"(%%esi)\n\t"
+        "movw    %%es, " IR_ES_OFF"(%%esi)\n\t"
+        "movw    %%fs, " IR_FS_OFF"(%%esi)\n\t"
+        "movw    %%gs, " IR_GS_OFF"(%%esi)\n\t"
         /* restore original stack pointer */
-        "movl    0x20(%%esi),%%esp\n\t"
+        "movl    "BKP_ESP_OFF"(%%esi),%%esp\n\t"
 "aftint:"
         /* return to protected mode */
         "movl    %%cr0, %%eax     \n\t"
@@ -264,13 +284,13 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         ".code32\n"
         /* reload segmentation registers */
 "cp_end: movl    %[regs_spot], %%esi\n\t"
-        "movw    0x2A(%%esi), %%ds\n\t"
-        "movw    0x2C(%%esi), %%es\n\t"
-        "movw    0x2E(%%esi), %%fs\n\t"
-        "movw    0x30(%%esi), %%gs\n\t"
-        "movw    0x32(%%esi), %%ss\n\t"
+        "movw    "BKP_DS_OFF"(%%esi), %%ds\n\t"
+        "movw    "BKP_ES_OFF"(%%esi), %%es\n\t"
+        "movw    "BKP_FS_OFF"(%%esi), %%fs\n\t"
+        "movw    "BKP_GS_OFF"(%%esi), %%gs\n\t"
+        "movw    "BKP_SS_OFF"(%%esi), %%ss\n\t"
         /* restore IDTR */
-        "movl    %[regs_spot]+0x24, %%eax\n\t"
+        "movl    %[regs_spot]+"BKP_IDTR_LIM", %%eax\n\t"
         "lidt    (%%eax)\n\t"
         : 
         : [fnc_spot]"i"(INT_FNC_SPOT), [regs_spot]"i"(INT_REGS_SPOT), [stack_top]"i"(INT_STACK_TOP), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE), [int_no]"a"(interruptNumber), [rml_code_sel]"m"(rml_code_dsc_selector), [rml_data_sel]"m"(rml_data_dsc_selector)
