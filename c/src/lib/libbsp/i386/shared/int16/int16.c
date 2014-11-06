@@ -240,8 +240,12 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "mov     %%ax, %%ds\n\t"
         "mov     %%ax, %%fs\n\t"
         "mov     %%ax, %%gs\n\t"
-        /* fill registers with parameters */
         "movl    %[regs_spot], %%esi\n\t"
+        /* backup stack pointer */
+        "movl    %%esp, "BKP_ESP_OFF"(%%esi)\n\t"
+        /* establish rm stack */
+        "movl    %[stack_top], %%esp\n\t"
+        /* fill registers with parameters */
         "movl    "IR_EAX_OFF"(%%esi), %%eax\n\t"
         "movl    "IR_EBX_OFF"(%%esi), %%ebx\n\t"
         "movl    "IR_ECX_OFF"(%%esi), %%ecx\n\t"
@@ -251,12 +255,8 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    " IR_ES_OFF"(%%esi), %%es\n\t"
         "movw    " IR_FS_OFF"(%%esi), %%fs\n\t"
         "movw    " IR_GS_OFF"(%%esi), %%gs\n\t"
-        /* backup stack pointer */
-        "movl    %%esp, "BKP_ESP_OFF"(%%esi)\n\t"
         /* prepare esi register */
         "movl    "IR_ESI_OFF"(%%esi), %%esi\n\t"
-        /* establish rm stack */
-        "movl    %[stack_top], %%esp\n\t"
 "intins: int     $0x0\n\t"
 
         /* fill return structure */
