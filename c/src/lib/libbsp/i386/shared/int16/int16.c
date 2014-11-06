@@ -209,25 +209,22 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "sidt    (%%eax)\n\t"
         "movl    $rmidt, %%eax\n\t"
         "lidt    (%%eax)\n\t"
-        /* jump to copied function */
-        "movl    %[fnc_spot], %%eax\n\t"
-        "jmp     *%%eax\n"
+        /* jump to copied function and */
+        /* prepare 'real mode like' data selector */
+        "movw    %[rml_data_sel], %%ax\n\t"
+        /* load 'real mode like' code selector */
+"rmlcsel:ljmp    $0x00, %[fnc_spot]\n"
         /* limit and base for realmode interrupt descriptor table */
 "rmidt:"
         ".word 0x3FF\n\t"
         ".long 0\n\t"
-        /* load 'real mode like' selectors */
-"cp_beg: movw    %[rml_data_sel], %%ax\n\t"
+        /* load 'real mode like' data selectors */
+"cp_beg: .code16\n\t"
         "movw    %%ax, %%ss\n\t"
         "movw    %%ax, %%ds\n\t"
         "movw    %%ax, %%es\n\t"
         "movw    %%ax, %%fs\n\t"
         "movw    %%ax, %%gs\n\t"
-
-        /* load 'real mode like' code selector */
-"rmlcsel:ljmp    $0x00, %[fnc_spot]+(cs_real-cp_beg)\n"
-"cs_real:"
-        ".code16\n\t"
         /* disable protected mode */
         "movl    %%cr0, %%eax\n\t"
         "andl    %[cr0_prot_dis], %%eax\n\t"
