@@ -305,9 +305,13 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    %%es, " IR_ES_OFF"(%%eax)\n\t"
         "movw    %%fs, " IR_FS_OFF"(%%eax)\n\t"
         "movw    %%gs, " IR_GS_OFF"(%%eax)\n\t"
+        /* prepare protected mode data segment */
         "movw    "BKP_DS_OFF"(%%eax), %%bx\n\t"
         /* discard values on the stack */
         "subl    $6,%%esp\n\t"
+        /* restore protected mode stack values */
+        "movl    "BKP_ESP_OFF"(%%eax),%%esp\n\t"
+        "movw    "BKP_SS_OFF"(%%eax), %%dx\n\t"
         /* return to protected mode */
         "movl    %%cr0, %%ecx     \n\t"
         "orl     %[cr0_prot_ena], %%ecx    \n\t"
@@ -317,10 +321,8 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* reload segmentation registers */
 "cp_end:"
         "movw    %%bx, %%ds\n\t"
-        "movl    %[regs_spot], %%eax\n\t"
-        /* restore original stack */
-        "movl    "BKP_ESP_OFF"(%%eax),%%esp\n\t"
-        "movw    "BKP_SS_OFF"(%%eax), %%ss\n\t"
+        /* restore stack segment in protected mode context */
+        "movw    %%dx, %%ss\n\t"
         "movl    %[pm_bkp], %%esi\n\t"
         "movw    "BKP_ES_OFF"(%%esi), %%es\n\t"
         "movw    "BKP_FS_OFF"(%%esi), %%fs\n\t"
