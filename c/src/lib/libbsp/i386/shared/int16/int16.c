@@ -269,6 +269,9 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "xor     %%ax, %%ax\n\t"
         "mov     %%ax, %%ss\n\t"
         "mov     %%ax, %%ds\n\t"
+        /* prepare values to be used after interrupt call */
+        "pushl   %%esi\n\t"
+        "pushw   %%ds\n\t"
         /* fill registers with parameters */
         "movw    " IR_DS_OFF"(%%esi), %%ax\n\t"
         "pushw   %%ax\n\t"
@@ -288,9 +291,8 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* fill return structure */
         "pushw   %%ds\n\t"
         "pushl   %%eax\n\t"
-        "xor     %%ax, %%ax\n\t"
-        "movw    %%ax, %%ds\n\t"
-        "movl    %[regs_spot], %%eax\n\t"
+        "movw    0x6(%%esp), %%ds\n\t"
+        "movl    0x8(%%esp),%%eax\n\t" /* regs_spot */
         "movl    %%ebx,"IR_EBX_OFF"(%%eax)\n\t"
         "popl    %%ebx\n\t"
         "movl    %%ebx,"IR_EAX_OFF"(%%eax)\n\t"
@@ -304,6 +306,8 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    %%fs, " IR_FS_OFF"(%%eax)\n\t"
         "movw    %%gs, " IR_GS_OFF"(%%eax)\n\t"
         "movw    "BKP_DS_OFF"(%%eax), %%bx\n\t"
+        /* discard values on the stack */
+        "subl    $6,%%esp\n\t"
         /* return to protected mode */
         "movl    %%cr0, %%ecx     \n\t"
         "orl     %[cr0_prot_ena], %%ecx    \n\t"
