@@ -235,9 +235,10 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    %%gs, "BKP_GS_OFF"(%%esi)\n\t"
         /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
         /* preserve idtr */
-        "addl    $"BKP_IDTR_LIM", %%esi\n\t"
+        "movl    %%esi, %%eax\n\t"
+        "addl    $"BKP_IDTR_LIM", %%eax\n\t"
         "cli\n\t"
-        "sidt    (%%esi)\n\t"
+        "sidt    (%%eax)\n\t"
         "movl    $rmidt, %%eax\n\t"
         "lidt    (%%eax)\n\t"
         /* jump to copied function and */
