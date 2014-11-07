@@ -26,26 +26,29 @@
 #define IR_GS_OFF       "0x1E"
 
 #define BKP_ESP_OFF     "0x20"
-#define BKP_IDTR_LIM    "0x24"
-#define BKP_IDTR_BASE   "0x26"
-#define BKP_DS_OFF      "0x2A"
-#define BKP_ES_OFF      "0x2C"
-#define BKP_FS_OFF      "0x2E"
-#define BKP_GS_OFF      "0x30"
-#define BKP_SS_OFF      "0x32"
+#define BKP_SS_OFF      "0x24"
+#define BKP_DS_OFF      "0x26"
 
-#define INT_REG_LEN     0x34
+#define INT_REG_LEN     0x28
 struct interrupt_registers_preserve_spots { /* used for passing parameters, fetching results and preserving values */
     struct interrupt_registers inoutregs;
-    uint32_t reg_esp_bkp;
+    uint32_t pm_esp_bkp;
+    uint16_t pm_ss_bkp;
+    uint16_t ds_bkp;
+    /* if modifying update INT_REG_LEN and offset definitions as well */
+}__attribute__((__packed__));
+
+#define BKP_IDTR_LIM    "0x00"
+#define BKP_IDTR_BASE   "0x02"
+#define BKP_ES_OFF      "0x06"
+#define BKP_FS_OFF      "0x08"
+#define BKP_GS_OFF      "0x0A"
+struct protected_mode_preserve_spots {
     uint16_t idtr_lim_bkp;
     uint32_t idtr_base_bkp;
-    uint16_t ds_bkp;
     uint16_t es_bkp;
     uint16_t fs_bkp;
     uint16_t gs_bkp;
-    uint16_t ss_bkp;
-    /* if modifying update INT_REG_LEN and offset definitions as well */
 }__attribute__((__packed__));
 
 /* addresses where we are going to put Interrupt buffer, parameter/returned/preserved values, stack and copy code for calling BIOS interrupt real mode interface */
@@ -166,6 +169,8 @@ inline uint16_t i386_get_primary_rm_buffer_size() {
 
 int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers *ir){
     uint32_t pagingon;
+    volatile struct protected_mode_preserve_spots pm_bkp, *pm_bkp_addr;
+    pm_bkp_addr = &pm_bkp;
     if(prepareRMDescriptors()!=__DP_YES)
 	return 0;
     __asm__ volatile(   "\t"
@@ -191,22 +196,27 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    %%cs, %%ax\n\t"
         "movl    $curcs, %%ecx\n\t"
         "movw    %%ax, 0x6(%%ecx)\n\t"
-        "movl    %[regs_spot], %%esi\n\t"
-        "movw    %%ds, "BKP_DS_OFF"(%%esi)\n\t"
-        "movw    %%es, "BKP_ES_OFF"(%%esi)\n\t"
-        "movw    %%fs, "BKP_FS_OFF"(%%esi)\n\t"
-        "movw    %%gs, "BKP_GS_OFF"(%%esi)\n\t"
-        "movw    %%ss, "BKP_SS_OFF"(%%esi)\n\t"
+        /* copy code for switching to real mode and executing interrupt to low memory */
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
         "movl    $cp_beg, %%esi\n\t"
         "movl    %[fnc_spot], %%edi\n\t"
         "rep movsb\n\t"
-        "cli\n\t"
+        /* backup stack */
+        "movl    %[regs_spot], %%esi\n\t"
+        "movl    %%esp, "BKP_ESP_OFF"(%%esi)\n\t"
+        "movw    %%ss,  "BKP_SS_OFF"(%%esi)\n\t"
+        "movw    %%ds,  "BKP_DS_OFF"(%%esi)\n\t"
+        /* backup selectors */
+        "movl    %[pm_bkp], %%esi\n\t"
+        "movw    %%es, "BKP_ES_OFF"(%%esi)\n\t"
+        "movw    %%fs, "BKP_FS_OFF"(%%esi)\n\t"
+        "movw    %%gs, "BKP_GS_OFF"(%%esi)\n\t"
         /* hopefully loader does not damage interrupt table on the beginning of memory; that means length: 0x3FF, base: 0x0 */
         /* preserve idtr */
-        "movl    %[regs_spot]+"BKP_IDTR_LIM", %%eax\n\t"
-        "sidt    (%%eax)\n\t"
+        "addl    $"BKP_IDTR_LIM", %%esi\n\t"
+        "cli\n\t"
+        "sidt    (%%esi)\n\t"
         "movl    $rmidt, %%eax\n\t"
         "lidt    (%%eax)\n\t"
         /* jump to copied function and */
@@ -232,14 +242,12 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* flush prefetch queue by far jumping */
         /* change selector in segmentation register to correct real mode style segment */
         "ljmp    $0x0, %[fnc_spot]+(dsels-cp_beg)\n"
-"dsels:  xor     %%ax, %%ax\n\t"
-        "mov     %%ax, %%ss\n\t"
-        "mov     %%ax, %%ds\n\t"
-        "movl    %[regs_spot], %%esi\n\t"
-        /* backup stack pointer */
-        "movl    %%esp, "BKP_ESP_OFF"(%%esi)\n\t"
+"dsels:  movl    %[regs_spot], %%esi\n\t"
         /* establish rm stack */
         "movl    %[stack_top], %%esp\n\t"
+        "xor     %%ax, %%ax\n\t"
+        "mov     %%ax, %%ss\n\t"
+        "mov     %%ax, %%ds\n\t"
         /* fill registers with parameters */
         "movw    " IR_DS_OFF"(%%esi), %%ax\n\t"
         "pushw   %%ax\n\t"
@@ -274,9 +282,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    %%es, " IR_ES_OFF"(%%eax)\n\t"
         "movw    %%fs, " IR_FS_OFF"(%%eax)\n\t"
         "movw    %%gs, " IR_GS_OFF"(%%eax)\n\t"
-        /* restore original stack pointer */
-        "movl    "BKP_ESP_OFF"(%%eax),%%esp\n\t"
-"aftint:"
+        "movw    "BKP_DS_OFF"(%%eax), %%bx\n\t"
         /* return to protected mode */
         "movl    %%cr0, %%eax     \n\t"
         "orl     %[cr0_prot_ena], %%eax    \n\t"
@@ -284,17 +290,21 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
 "curcs:  ljmpl   $0x0,$cp_end \n\t"
         ".code32\n"
         /* reload segmentation registers */
-"cp_end: movl    %[regs_spot], %%esi\n\t"
-        "movw    "BKP_DS_OFF"(%%esi), %%ds\n\t"
+"cp_end:"
+        "movw    %%bx, %%ds\n\t"
+        "movl    %[regs_spot], %%eax\n\t"
+        /* restore original stack */
+        "movl    "BKP_ESP_OFF"(%%eax),%%esp\n\t"
+        "movw    "BKP_SS_OFF"(%%eax), %%ss\n\t"
+        "movl    %[pm_bkp], %%esi\n\t"
         "movw    "BKP_ES_OFF"(%%esi), %%es\n\t"
         "movw    "BKP_FS_OFF"(%%esi), %%fs\n\t"
         "movw    "BKP_GS_OFF"(%%esi), %%gs\n\t"
-        "movw    "BKP_SS_OFF"(%%esi), %%ss\n\t"
         /* restore IDTR */
-        "movl    %[regs_spot]+"BKP_IDTR_LIM", %%eax\n\t"
-        "lidt    (%%eax)\n\t"
+        "addl    $"BKP_IDTR_LIM", %%esi\n\t"
+        "lidt    (%%esi)\n\t"
         : 
-        : [fnc_spot]"i"(INT_FNC_SPOT), [regs_spot]"i"(INT_REGS_SPOT), [stack_top]"i"(INT_STACK_TOP), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE), [int_no]"a"(interruptNumber), [rml_code_sel]"m"(rml_code_dsc_selector), [rml_data_sel]"m"(rml_data_dsc_selector)
+        : [fnc_spot]"i"(INT_FNC_SPOT), [regs_spot]"i"(INT_REGS_SPOT), [pm_bkp]"m"(pm_bkp_addr), [stack_top]"i"(INT_STACK_TOP), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE), [int_no]"a"(interruptNumber), [rml_code_sel]"m"(rml_code_dsc_selector), [rml_data_sel]"m"(rml_data_dsc_selector)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
     *ir = parret->inoutregs;
