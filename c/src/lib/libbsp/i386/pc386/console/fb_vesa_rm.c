@@ -36,6 +36,8 @@
 
 #define FB_VESA_NAME    "FB_VESA_RM"
 
+void vesa_realmode_bootup_init(void);
+
 /* mutex for protection against multiple opens, when called frame_buffer_open */
 static pthread_mutex_t vesa_mutex = PTHREAD_MUTEX_INITIALIZER;
 
