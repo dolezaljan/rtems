@@ -28,13 +28,19 @@
 #define BKP_ESP_OFF     "0x20"
 #define BKP_SS_OFF      "0x24"
 #define BKP_DS_OFF      "0x26"
+#define RM_ENTRY        "0x28"
+#define PM_ENTRY        "0x2C"
 
-#define INT_REG_LEN     0x28
+#define INT_REG_LEN     0x32
 struct interrupt_registers_preserve_spots { /* used for passing parameters, fetching results and preserving values */
     struct interrupt_registers inoutregs;
     uint32_t pm_esp_bkp;
     uint16_t pm_ss_bkp;
     uint16_t ds_bkp;
+    uint16_t rm_entry;
+    uint16_t rm_code_segment;
+    uint32_t pm_entry;
+    uint16_t pm_code_selector;
     /* if modifying update INT_REG_LEN and offset definitions as well */
 }__attribute__((__packed__));
 
@@ -43,12 +49,15 @@ struct interrupt_registers_preserve_spots { /* used for passing parameters, fetc
 #define BKP_ES_OFF      "0x06"
 #define BKP_FS_OFF      "0x08"
 #define BKP_GS_OFF      "0x0A"
+#define RML_ENTRY       "0x0C"
 struct protected_mode_preserve_spots {
     uint16_t idtr_lim_bkp;
     uint32_t idtr_base_bkp;
     uint16_t es_bkp;
     uint16_t fs_bkp;
     uint16_t gs_bkp;
+    uint32_t rml_entry;
+    uint16_t rml_code_selector;
 }__attribute__((__packed__));
 
 /* addresses where we are going to put Interrupt buffer, parameter/returned/preserved values, stack and copy code for calling BIOS interrupt real mode interface */
@@ -183,19 +192,31 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         return 0;
     uint16_t rml_code_dsc_selector = (rml_code_dsc_index<<3);
     uint16_t rml_data_dsc_selector = (rml_data_dsc_index<<3);
+    pm_bkp.rml_code_selector = rml_code_dsc_selector;
+    pm_bkp.rml_entry = INT_FNC_SPOT;
     struct interrupt_registers_preserve_spots *parret = (struct interrupt_registers_preserve_spots *)INT_REGS_SPOT;
     parret->inoutregs = *ir;
+    /* offset from the beginning of coppied code */
+    uint16_t rm_entry_offset;
+    __asm__ volatile(
+        "movw   $(dsels-cp_beg), %0\n\t"
+        : "=r"(rm_entry_offset)
+    );
+    parret->rm_entry = INT_FNC_SPOT+rm_entry_offset;
+    parret->rm_code_segment = 0;
+    uint32_t pm_entry_offset;
+    uint16_t current_code_selector;
+    __asm__ volatile(
+        "movl   $(cp_end), %0\n\t"
+        "movw   %%cs, %1\n\t"
+        : "=r"(pm_entry_offset), "=r"(current_code_selector)
+    );
+    parret->pm_entry = pm_entry_offset;
+    parret->pm_code_selector = current_code_selector;
         /* copy desired code to first 64kB of RAM */
     __asm__ volatile(   "\t"
         "movl    $intins, %%ecx\n\t"
         "movb    %[int_no], 0x1(%%ecx)\n\t" /* write interrupt number */
-        "movl    $rmlcsel, %%ecx\n\t"
-        "movw    %[rml_code_sel], %%ax\n\t"
-        "movw    %%ax, 0x5(%%ecx)\n\t" /* write real mode like code selector */
-        /* backup current selectors */
-        "movw    %%cs, %%ax\n\t"
-        "movl    $curcs, %%ecx\n\t"
-        "movw    %%ax, 0x6(%%ecx)\n\t"
         /* copy code for switching to real mode and executing interrupt to low memory */
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
@@ -203,10 +224,10 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movl    %[fnc_spot], %%edi\n\t"
         "rep movsb\n\t"
         /* backup stack */
-        "movl    %[regs_spot], %%esi\n\t"
-        "movl    %%esp, "BKP_ESP_OFF"(%%esi)\n\t"
-        "movw    %%ss,  "BKP_SS_OFF"(%%esi)\n\t"
-        "movw    %%ds,  "BKP_DS_OFF"(%%esi)\n\t"
+        "movl    %[regs_spot], %%ebx\n\t"
+        "movl    %%esp, "BKP_ESP_OFF"(%%ebx)\n\t"
+        "movw    %%ss,  "BKP_SS_OFF"(%%ebx)\n\t"
+        "movw    %%ds,  "BKP_DS_OFF"(%%ebx)\n\t"
         /* backup selectors */
         "movl    %[pm_bkp], %%esi\n\t"
         "movw    %%es, "BKP_ES_OFF"(%%esi)\n\t"
@@ -223,9 +244,8 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* prepare 'real mode like' data selector */
         "movw    %[rml_data_sel], %%ax\n\t"
         /* load 'real mode like' code selector */
-"rmlcsel:ljmp    $0x00, %[fnc_spot]\n"
-        /* limit and base for realmode interrupt descriptor table */
-"rmidt:"
+        "ljmp   *"RML_ENTRY"(%%esi)\n"
+"rmidt:"/* limit and base for realmode interrupt descriptor table */
         ".word 0x3FF\n\t"
         ".long 0\n\t"
         /* load 'real mode like' data selectors */
@@ -240,8 +260,8 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "andl    %[cr0_prot_dis], %%eax\n\t"
         "movl    %%eax, %%cr0\n\t"
         /* flush prefetch queue by far jumping */
-        /* change selector in segmentation register to correct real mode style segment */
-        "ljmp    $0x0, %[fnc_spot]+(dsels-cp_beg)\n"
+        /* change selector in segmentation register to establish real mode style segment */
+        "ljmp    *"RM_ENTRY"(%%bx)\n\t"
 "dsels:  movl    %[regs_spot], %%esi\n\t"
         /* establish rm stack */
         "movl    %[stack_top], %%esp\n\t"
@@ -284,10 +304,10 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    %%gs, " IR_GS_OFF"(%%eax)\n\t"
         "movw    "BKP_DS_OFF"(%%eax), %%bx\n\t"
         /* return to protected mode */
-        "movl    %%cr0, %%eax     \n\t"
-        "orl     %[cr0_prot_ena], %%eax    \n\t"
-        "movl    %%eax, %%cr0     \n\t"
-"curcs:  ljmpl   $0x0,$cp_end \n\t"
+        "movl    %%cr0, %%ecx     \n\t"
+        "orl     %[cr0_prot_ena], %%ecx    \n\t"
+        "movl    %%ecx, %%cr0     \n\t"
+        "ljmpl   *"PM_ENTRY"(%%eax)\n\t"
         ".code32\n"
         /* reload segmentation registers */
 "cp_end:"
