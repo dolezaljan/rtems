@@ -209,7 +209,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     /* offset from the beginning of coppied code */
     uint16_t rm_entry_offset;
     __asm__ volatile(
-        "movw   $(dsels-cp_beg), %0\n\t"
+        "movw   $(rment-cp_beg), %0\n\t"
         : "=r"(rm_entry_offset)
     );
     parret->rm_entry = INT_FNC_SPOT+rm_entry_offset;
@@ -255,6 +255,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* prepare 'real mode like' data selector */
         "movw    "RML_D_SEL"(%%esi), %%ax\n\t"
         /* prepare real mode data segment value */
+        "xorl    %%edx,%%edx\n\t"
         "movw    "RM_DS"(%%esi), %%dx\n\t"
         /* prepare real mode stack values */
         "movw    "RM_SS"(%%esi), %%cx\n\t"
@@ -277,62 +278,65 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movl    %%eax, %%cr0\n\t"
         /* flush prefetch queue by far jumping */
         /* change selector in segmentation register to establish real mode style segment */
-        "ljmp    *"RM_ENTRY"(%%bx)\n\t"
-"dsels:  movl    %[regs_spot], %%esi\n\t"
+        "ljmp    *"RM_ENTRY"(%%ebx)\n\t"
+"rment: "
         /* establish rm stack - esp was already set in 32-bit protected mode*/
-        "mov     %%cx, %%ss\n\t"
+        "movw    %%cx, %%ss\n\t"
         /* set data segment (value prepared in 32-bit prot mode) */
-        "mov     %%dx, %%ds\n\t"
+        "movw    %%dx, %%ds\n\t"
+        /* count real mode pointer so we don't need to overuse address prefix (by using 32bit address) */
+        "shll    $4,%%edx\n\t"
+        "subl    %%edx,%%ebx\n\t"
         /* prepare values to be used after interrupt call */
-        "pushl   %%esi\n\t"
+        "pushw   %%bx\n\t"
         "pushw   %%ds\n\t"
         /* fill registers with parameters */
-        "movw    " IR_DS_OFF"(%%esi), %%ax\n\t"
+        "movw    " IR_DS_OFF"(%%bx), %%ax\n\t"
         "pushw   %%ax\n\t"
-        "movl    "IR_EAX_OFF"(%%esi), %%eax\n\t"
-        "movl    "IR_EBX_OFF"(%%esi), %%ebx\n\t"
-        "movl    "IR_ECX_OFF"(%%esi), %%ecx\n\t"
-        "movl    "IR_EDX_OFF"(%%esi), %%edx\n\t"
-        "movl    "IR_EDI_OFF"(%%esi), %%edi\n\t"
-        "movw    " IR_ES_OFF"(%%esi), %%es\n\t"
-        "movw    " IR_FS_OFF"(%%esi), %%fs\n\t"
-        "movw    " IR_GS_OFF"(%%esi), %%gs\n\t"
-        /* prepare esi register */
-        "movl    "IR_ESI_OFF"(%%esi), %%esi\n\t"
+        "movl    "IR_EAX_OFF"(%%bx), %%eax\n\t"
+        "movl    "IR_ECX_OFF"(%%bx), %%ecx\n\t"
+        "movl    "IR_EDX_OFF"(%%bx), %%edx\n\t"
+        "movl    "IR_EDI_OFF"(%%bx), %%edi\n\t"
+        "movl    "IR_ESI_OFF"(%%bx), %%esi\n\t"
+        "movw    " IR_ES_OFF"(%%bx), %%es\n\t"
+        "movw    " IR_FS_OFF"(%%bx), %%fs\n\t"
+        "movw    " IR_GS_OFF"(%%bx), %%gs\n\t"
+        /* prepare ebx register */
+        "movl    "IR_EBX_OFF"(%%bx), %%ebx\n\t"
         /* prepare ds */
         "popw    %%ds\n\t"
 "intins: int     $0x0\n\t"
         /* fill return structure */
         "pushw   %%ds\n\t"
-        "pushl   %%eax\n\t"
+        "pushl   %%ebx\n\t"
         "movw    0x6(%%esp), %%ds\n\t"
-        "movl    0x8(%%esp),%%eax\n\t" /* regs_spot */
-        "movl    %%ebx,"IR_EBX_OFF"(%%eax)\n\t"
-        "popl    %%ebx\n\t"
-        "movl    %%ebx,"IR_EAX_OFF"(%%eax)\n\t"
-        "movl    %%ecx,"IR_ECX_OFF"(%%eax)\n\t"
-        "movl    %%edx,"IR_EDX_OFF"(%%eax)\n\t"
-        "movl    %%esi,"IR_ESI_OFF"(%%eax)\n\t"
-        "movl    %%edi,"IR_EDI_OFF"(%%eax)\n\t"
-        "popw    %%bx\n\t"
-        "movw    %%bx, " IR_DS_OFF"(%%eax)\n\t"
-        "movw    %%es, " IR_ES_OFF"(%%eax)\n\t"
-        "movw    %%fs, " IR_FS_OFF"(%%eax)\n\t"
-        "movw    %%gs, " IR_GS_OFF"(%%eax)\n\t"
+        "movw    0x8(%%esp),%%bx\n\t" /* regs_spot */
+        "movl    %%eax,"IR_EAX_OFF"(%%bx)\n\t"
+        "popl    %%eax\n\t"
+        "movl    %%eax,"IR_EBX_OFF"(%%bx)\n\t"
+        "movl    %%ecx,"IR_ECX_OFF"(%%bx)\n\t"
+        "movl    %%edx,"IR_EDX_OFF"(%%bx)\n\t"
+        "movl    %%esi,"IR_ESI_OFF"(%%bx)\n\t"
+        "movl    %%edi,"IR_EDI_OFF"(%%bx)\n\t"
+        "popw    %%ax\n\t"
+        "movw    %%ax, " IR_DS_OFF"(%%bx)\n\t"
+        "movw    %%es, " IR_ES_OFF"(%%bx)\n\t"
+        "movw    %%fs, " IR_FS_OFF"(%%bx)\n\t"
+        "movw    %%gs, " IR_GS_OFF"(%%bx)\n\t"
         /* prepare protected mode data segment */
-        "movw    "BKP_DS_OFF"(%%eax), %%bx\n\t"
+        "movw    "BKP_DS_OFF"(%%bx), %%ax\n\t"
         /* restore protected mode stack values */
-        "movl    "BKP_ESP_OFF"(%%eax),%%esp\n\t"
-        "movw    "BKP_SS_OFF"(%%eax), %%dx\n\t"
+        "movl    "BKP_ESP_OFF"(%%bx),%%esp\n\t"
+        "movw    "BKP_SS_OFF"(%%bx), %%dx\n\t"
         /* return to protected mode */
         "movl    %%cr0, %%ecx     \n\t"
-        "orl     %[cr0_prot_ena], %%ecx    \n\t"
+        "or      %[cr0_prot_ena], %%cx\n\t"
         "movl    %%ecx, %%cr0     \n\t"
-        "ljmpl   *"PM_ENTRY"(%%eax)\n\t"
+        "ljmpl   *"PM_ENTRY"(%%bx)\n\t"
         ".code32\n"
         /* reload segmentation registers */
 "cp_end:"
-        "movw    %%bx, %%ds\n\t"
+        "movw    %%ax, %%ds\n\t"
         /* restore stack segment in protected mode context */
         "movw    %%dx, %%ss\n\t"
         "movl    %[pm_bkp], %%esi\n\t"
