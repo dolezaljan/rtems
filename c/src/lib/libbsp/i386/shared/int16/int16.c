@@ -321,8 +321,6 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    %%gs, " IR_GS_OFF"(%%eax)\n\t"
         /* prepare protected mode data segment */
         "movw    "BKP_DS_OFF"(%%eax), %%bx\n\t"
-        /* discard values on the stack */
-        "subl    $6,%%esp\n\t"
         /* restore protected mode stack values */
         "movl    "BKP_ESP_OFF"(%%eax),%%esp\n\t"
         "movw    "BKP_SS_OFF"(%%eax), %%dx\n\t"
