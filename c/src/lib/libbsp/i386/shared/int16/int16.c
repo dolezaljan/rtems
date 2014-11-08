@@ -223,22 +223,38 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     );
     parret->pm_entry = pm_entry_offset;
     parret->pm_code_selector = current_code_selector;
-        /* copy desired code to first 64kB of RAM */
+    /* copy code for switch to real mode and executing interrupt to first MB of RAM */
+    void *rm_swtch_code_dst = (void *)INT_FNC_SPOT;
     __asm__ volatile(   "\t"
-        "movl    $intins, %%ecx\n\t"
-        "movb    %[int_no], 0x1(%%ecx)\n\t" /* write interrupt number */
-        /* copy code for switching to real mode and executing interrupt to low memory */
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
         "movl    $cp_beg, %%esi\n\t"
-        "movl    %[fnc_spot], %%edi\n\t"
+        "movl    %0, %%edi\n\t"
         "rep movsb\n\t"
+        :
+        : "rm"(rm_swtch_code_dst)
+        : "memory", "ecx", "esi", "edi"
+    );
+    /* write interrupt number to be executed */
+    uint16_t interrupt_number_off;
+    uint8_t *interrupt_number_ptr;
+    __asm__ volatile(   "\t"
+        "movw   $intnum-cp_beg, %0\n\t"
+        :
+        : "rm"(interrupt_number_off)
+    );
+    interrupt_number_ptr = (uint8_t *) (INT_FNC_SPOT+interrupt_number_off);
+    *interrupt_number_ptr = interruptNumber;
+    /* execute code that jumps to coppied function, which switches to real mode,
+       loads registers with values passed to interrupt and executes interrupt */
+    __asm__ volatile(   "\t"
         /* backup stack */
         "movl    %[regs_spot], %%ebx\n\t"
         "movl    %%esp, "BKP_ESP_OFF"(%%ebx)\n\t"
         "movw    %%ss,  "BKP_SS_OFF"(%%ebx)\n\t"
+        /* backup data selector */
         "movw    %%ds,  "BKP_DS_OFF"(%%ebx)\n\t"
-        /* backup selectors */
+        /* backup other selectors */
         "movl    %[pm_bkp], %%esi\n\t"
         "movw    %%es, "BKP_ES_OFF"(%%esi)\n\t"
         "movw    %%fs, "BKP_FS_OFF"(%%esi)\n\t"
@@ -251,7 +267,6 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "sidt    (%%eax)\n\t"
         "movl    $rmidt, %%eax\n\t"
         "lidt    (%%eax)\n\t"
-        /* jump to copied function and */
         /* prepare 'real mode like' data selector */
         "movw    "RML_D_SEL"(%%esi), %%ax\n\t"
         /* prepare real mode data segment value */
@@ -260,6 +275,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* prepare real mode stack values */
         "movw    "RM_SS"(%%esi), %%cx\n\t"
         "movl    "RM_ESP"(%%esi), %%esp\n\t"
+        /* jump to copied function and */
         /* load 'real mode like' code selector */
         "ljmp   *"RML_ENTRY"(%%esi)\n"
 "rmidt:"/* limit and base for realmode interrupt descriptor table */
@@ -277,7 +293,6 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "andl    %[cr0_prot_dis], %%eax\n\t"
         "movl    %%eax, %%cr0\n\t"
         /* flush prefetch queue by far jumping */
-        /* change selector in segmentation register to establish real mode style segment */
         "ljmp    *"RM_ENTRY"(%%ebx)\n\t"
 "rment: "
         /* establish rm stack - esp was already set in 32-bit protected mode*/
@@ -305,7 +320,9 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movl    "IR_EBX_OFF"(%%bx), %%ebx\n\t"
         /* prepare ds */
         "popw    %%ds\n\t"
-"intins: int     $0x0\n\t"
+        /* interrupt instruction */
+        ".byte   0xCD\n\t"
+"intnum: .byte   0x0\n\t"
         /* fill return structure */
         "pushw   %%ds\n\t"
         "pushl   %%ebx\n\t"
@@ -347,7 +364,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "addl    $"BKP_IDTR_LIM", %%esi\n\t"
         "lidt    (%%esi)\n\t"
         : 
-        : [fnc_spot]"i"(INT_FNC_SPOT), [regs_spot]"i"(INT_REGS_SPOT), [pm_bkp]"m"(pm_bkp_addr), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE), [int_no]"a"(interruptNumber)
+        : [regs_spot]"i"(INT_REGS_SPOT), [pm_bkp]"m"(pm_bkp_addr), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
     *ir = parret->inoutregs;
