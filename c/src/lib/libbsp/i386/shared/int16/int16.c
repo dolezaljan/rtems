@@ -364,7 +364,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "addl    $"BKP_IDTR_LIM", %%esi\n\t"
         "lidt    (%%esi)\n\t"
         : 
-        : [regs_spot]"i"(INT_REGS_SPOT), [pm_bkp]"m"(pm_bkp_addr), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE)
+        : [regs_spot]"m"(parret), [pm_bkp]"m"(pm_bkp_addr), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
     *ir = parret->inoutregs;
