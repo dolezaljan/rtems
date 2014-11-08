@@ -185,6 +185,7 @@ inline uint16_t i386_get_primary_rm_buffer_size() {
 }
 
 int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers *ir){
+    struct interrupt_registers_preserve_spots *int_passed_regs_spot;
     uint32_t pagingon;
     volatile struct protected_mode_preserve_spots pm_bkp, *pm_bkp_addr;
     pm_bkp_addr = &pm_bkp;
@@ -198,26 +199,27 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     );
     if(pagingon)
         return 0;
+    int_passed_regs_spot = (struct interrupt_registers_preserve_spots *)INT_REGS_SPOT;
     pm_bkp.rml_code_selector = (rml_code_dsc_index<<3);
     pm_bkp.rml_entry = INT_FNC_SPOT;
     pm_bkp.rml_data_selector = (rml_data_dsc_index<<3);
     pm_bkp.rm_stack_segment = 0;
     pm_bkp.rm_stack_pointer = INT_STACK_TOP;
     pm_bkp.rm_data_segment = 0;
-    struct interrupt_registers_preserve_spots *parret = (struct interrupt_registers_preserve_spots *)INT_REGS_SPOT;
-    parret->inoutregs = *ir;
+
+    int_passed_regs_spot->inoutregs = *ir;
     /* offset from the beginning of coppied code */
     uint16_t rm_entry_offset;
     __asm__ volatile(
         "movw   $(rment-cp_beg), %0\n\t"
         : "=r"(rm_entry_offset)
     );
-    parret->rm_entry = INT_FNC_SPOT+rm_entry_offset;
-    parret->rm_code_segment = 0;
+    int_passed_regs_spot->rm_entry = INT_FNC_SPOT+rm_entry_offset;
+    int_passed_regs_spot->rm_code_segment = 0;
     __asm__ volatile(
         "movl   $(cp_end), %0\n\t"
         "movw   %%cs, %1\n\t"
-        : "=mr"(parret->pm_entry), "=mr"(parret->pm_code_selector)
+        : "=mr"(int_passed_regs_spot->pm_entry), "=mr"(int_passed_regs_spot->pm_code_selector)
     );
     /* copy code for switch to real mode and executing interrupt to first MB of RAM */
     void *rm_swtch_code_dst = (void *)INT_FNC_SPOT;
@@ -360,10 +362,10 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "addl    $"BKP_IDTR_LIM", %%esi\n\t"
         "lidt    (%%esi)\n\t"
         : 
-        : [regs_spot]"m"(parret), [pm_bkp]"m"(pm_bkp_addr), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE)
+        : [regs_spot]"m"(int_passed_regs_spot), [pm_bkp]"m"(pm_bkp_addr), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
-    *ir = parret->inoutregs;
+    *ir = int_passed_regs_spot->inoutregs;
     return 1;
 }
 
