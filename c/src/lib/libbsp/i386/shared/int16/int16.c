@@ -214,15 +214,11 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     );
     parret->rm_entry = INT_FNC_SPOT+rm_entry_offset;
     parret->rm_code_segment = 0;
-    uint32_t pm_entry_offset;
-    uint16_t current_code_selector;
     __asm__ volatile(
         "movl   $(cp_end), %0\n\t"
         "movw   %%cs, %1\n\t"
-        : "=r"(pm_entry_offset), "=r"(current_code_selector)
+        : "=mr"(parret->pm_entry), "=mr"(parret->pm_code_selector)
     );
-    parret->pm_entry = pm_entry_offset;
-    parret->pm_code_selector = current_code_selector;
     /* copy code for switch to real mode and executing interrupt to first MB of RAM */
     void *rm_swtch_code_dst = (void *)INT_FNC_SPOT;
     __asm__ volatile(   "\t"
