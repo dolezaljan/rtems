@@ -238,8 +238,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     uint8_t *interrupt_number_ptr;
     __asm__ volatile(   "\t"
         "movw   $intnum-cp_beg, %0\n\t"
-        :
-        : "rm"(interrupt_number_off)
+        : "=rm"(interrupt_number_off)
     );
     interrupt_number_ptr = (uint8_t *) (INT_FNC_SPOT+interrupt_number_off);
     *interrupt_number_ptr = interruptNumber;
