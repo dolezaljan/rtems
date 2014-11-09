@@ -17,8 +17,17 @@
  *  http://www.rtems.org/license/LICENSE.
  */
 
+#ifndef _INT16_H
+#define _INT16_H
+
 #include <libcpu/cpu.h>
 #include <stdint.h>
+
+#ifndef ASM /* ASM */
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 /* --- BIOS service interrupt number --- */
 /* number of interrupt servicing video functions */
@@ -72,3 +81,10 @@ extern uint16_t i386_get_primary_rm_buffer_size(void);
  */
 extern int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers *ir);
 
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif /* ASM */
+
+#endif /* _INT16_H */
