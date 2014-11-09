@@ -24,6 +24,8 @@
  *  Interrupt 0x10 is used for entering graphics BIOS.
  */
 
+#include <bsp.h>
+
 #include <fb_vesa.h>
 #include <bsp/int16.h>
 
@@ -33,6 +35,8 @@
 
 #include <rtems/fb.h>
 #include <rtems/framebuffer.h>
+
+#include <stdlib.h>
 
 #define FB_VESA_NAME    "FB_VESA_RM"
 
@@ -172,6 +176,55 @@ static uint16_t findModeByResolution(struct modeParams *modeList, uint8_t listLe
             }
         }
         i++;
+    }
+    return -1;
+}
+
+/*  
+ * Parse comandline option "--video=" if available.
+ *  expected format
+ *  --video=<resX>x<resY>[-<bpp>] 
+ *  numbers <resX>, <resY> and <bpp> are decadic
+ *
+ * @return video mode number to be set
+ *         -1 on parsing error or when no suitable mode found
+ */
+static uint16_t findModeUsingCmdline(struct modeParams *modeList, uint8_t listLength) {
+    const char* opt;
+    struct modeParams cmdlineMode;
+    char* endptr;
+    cmdlineMode.bpp = 0;
+    opt = bsp_cmdline_arg("--video=");
+    if(opt) {
+        opt += sizeof("--video=")-1;
+        cmdlineMode.resX = strtol(opt, &endptr, 10);
+        if(*endptr != 'x') {
+            return -1;
+        }
+        opt = endptr+1;
+        cmdlineMode.resY = strtol(opt, &endptr, 10);
+        switch (*endptr) {
+            case '-':
+                opt = endptr+1;
+                if(strlen(opt)<=2) {
+                    cmdlineMode.bpp = strtol(opt, &endptr, 10);
+                }
+                else
+                {
+                    cmdlineMode.bpp = strtol(opt, &endptr, 10);
+                    if(*endptr != ' ') {
+                        return -1;
+                    }
+                }
+            case ' ':
+            case 0:
+                break;
+            default:
+                return -1;
+        }
+        
+        if(findModeByResolution(modeList, listLength, &cmdlineMode) != (uint16_t)-1)
+            return cmdlineMode.modeNumber;
     }
     return -1;
 }
@@ -402,9 +455,15 @@ void vesa_realmode_bootup_init(void){
         iterator++;
     }
 
-    vbe_usedMode = findModeUsingEDID(sortModeParams, numberOfModes);
+    /* first search for video argument in multiboot options */
+    vbe_usedMode = findModeUsingCmdline(sortModeParams, numberOfModes);
     if(vbe_usedMode == (uint16_t)-1) {
-        vbe_usedMode = sortModeParams[0].modeNumber;
+        /* second search monitor for good resolution */
+        vbe_usedMode = findModeUsingEDID(sortModeParams, numberOfModes);
+        if(vbe_usedMode == (uint16_t)-1) {
+            /* third set highest values */
+            vbe_usedMode = sortModeParams[0].modeNumber;
+        }
     }
 
     /* fill framebuffer structs with info about selected mode */
