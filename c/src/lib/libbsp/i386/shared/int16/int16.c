@@ -13,6 +13,7 @@
 
 #include <bsp/int16.h>
 #include <string.h>
+#include <rtems/score/cpu.h>
 
 #define IR_EAX_OFF      "0x00"
 #define IR_EBX_OFF      "0x04"
@@ -31,7 +32,6 @@
 #define RM_ENTRY        "0x28"
 #define PM_ENTRY        "0x2C"
 
-#define INT_REG_LEN     0x32
 struct interrupt_registers_preserve_spots { /* used for passing parameters, fetching results and preserving values */
     struct interrupt_registers inoutregs;
     uint32_t pm_esp_bkp;
@@ -41,7 +41,7 @@ struct interrupt_registers_preserve_spots { /* used for passing parameters, fetc
     uint16_t rm_code_segment;
     uint32_t pm_entry;
     uint16_t pm_code_selector;
-    /* if modifying update INT_REG_LEN and offset definitions as well */
+    /* if modifying update offset definitions as well */
 }__attribute__((__packed__));
 
 #define BKP_IDTR_LIM    "0x00"
@@ -69,22 +69,27 @@ struct protected_mode_preserve_spots {
 }__attribute__((__packed__));
 
 /* addresses where we are going to put Interrupt buffer, parameter/returned/preserved values, stack and copy code for calling BIOS interrupt real mode interface */
-#define RM_INT_CALL_SPOT   0x1000
-#define RM_INT_BUF_SPOT RM_INT_CALL_SPOT
-#define RM_INT_BUF_LEN 512
-#define INT_REGS_SPOT (RM_INT_BUF_SPOT+RM_INT_BUF_LEN)
-/* position for real mode code reallocation to the first MB of RAM */
-#define INT_FNC_SPOT (INT_REGS_SPOT+INT_REG_LEN)
-#define INT_STACK_TOP (INT_FNC_SPOT+0x500)
+#define REAL_MODE_SPOT   0xFD30
+/* current (0xFD30) REAL_MODE_SPOT value is top of real mode stack and
+   other realated data ends few bytes before end of first 64kB of memory */
+
+/* buffers positions and lengths */
+#define DEFAULT_BUFFER_SIZE             512
+static void *first_rm_buffer_spot = (void *)REAL_MODE_SPOT;
+static uint16_t first_rm_buffer_size = DEFAULT_BUFFER_SIZE;
+
+/* real mode stack */
+#define STACK_SIZE			8192
+#define INT_STACK_TOP 			REAL_MODE_SPOT
 
 /******************************
+ * STACK            *         *
+ ****************************** REAL_MODE_SPOT
  * INT_BUF          * 512 B   *
  ******************************
- * INT_REGs         * 52 B    *
+ * INT_REGs         *  50 B   *
  ******************************
- * INT_FNC          *         *
- ******************** 0x500 B *
- * STACK            *         *
+ * INT_FNC          *~149 B   *
  ******************************/
 
 #define __DP_TYPE 	uint8_t
@@ -177,18 +182,24 @@ static __DP_TYPE prepareRMDescriptors (void) {
 }
 
 inline void *i386_get_primary_rm_buffer() {
-    return (void *)RM_INT_BUF_SPOT;
+    return first_rm_buffer_spot;
 }
 
 inline uint16_t i386_get_primary_rm_buffer_size() {
-    return RM_INT_BUF_LEN;
+    return first_rm_buffer_size;
 }
 
 int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers *ir){
-    struct interrupt_registers_preserve_spots *int_passed_regs_spot;
     uint32_t pagingon;
+    struct interrupt_registers_preserve_spots *int_passed_regs_spot;
+    /* place where the code switching to realmode and executing
+       interrupt is coppied */
+    void *rm_swtch_code_dst;
+    void *rm_stack_top;
+
     volatile struct protected_mode_preserve_spots pm_bkp, *pm_bkp_addr;
-    pm_bkp_addr = &pm_bkp;
+    unsigned short unused_offset;
+    
     if(prepareRMDescriptors()!=__DP_YES)
 	return 0;
     __asm__ volatile(   "\t"
@@ -199,13 +210,28 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     );
     if(pagingon)
         return 0;
-    int_passed_regs_spot = (struct interrupt_registers_preserve_spots *)INT_REGS_SPOT;
+
+    int_passed_regs_spot = (struct interrupt_registers_preserve_spots *)
+                                (first_rm_buffer_spot+first_rm_buffer_size);
+    /* position for real mode code reallocation to the first 64kB of RAM */
+    rm_swtch_code_dst = (void *)((uint32_t)int_passed_regs_spot+sizeof(*int_passed_regs_spot));
+    rm_stack_top = (void *)INT_STACK_TOP;
+
+    pm_bkp_addr = &pm_bkp;
+    i386_Physical_to_real_mode_ptr(
+        rm_stack_top - STACK_SIZE,
+        (unsigned short *)&pm_bkp.rm_stack_segment,
+        (unsigned short *)&pm_bkp.rm_stack_pointer
+    );
+    pm_bkp.rm_stack_pointer += STACK_SIZE;
     pm_bkp.rml_code_selector = (rml_code_dsc_index<<3);
-    pm_bkp.rml_entry = INT_FNC_SPOT;
+    pm_bkp.rml_entry = (uint32_t)rm_swtch_code_dst;
     pm_bkp.rml_data_selector = (rml_data_dsc_index<<3);
-    pm_bkp.rm_stack_segment = 0;
-    pm_bkp.rm_stack_pointer = INT_STACK_TOP;
-    pm_bkp.rm_data_segment = 0;
+    i386_Physical_to_real_mode_ptr(
+        int_passed_regs_spot,
+        (unsigned short *)&pm_bkp.rm_data_segment,
+        &unused_offset
+    );
 
     int_passed_regs_spot->inoutregs = *ir;
     /* offset from the beginning of coppied code */
@@ -214,15 +240,17 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw   $(rment-cp_beg), %0\n\t"
         : "=r"(rm_entry_offset)
     );
-    int_passed_regs_spot->rm_entry = INT_FNC_SPOT+rm_entry_offset;
-    int_passed_regs_spot->rm_code_segment = 0;
+    i386_Physical_to_real_mode_ptr(
+        rm_swtch_code_dst+rm_entry_offset,
+        (unsigned short *)&int_passed_regs_spot->rm_code_segment,
+        (unsigned short *)&int_passed_regs_spot->rm_entry
+    );
     __asm__ volatile(
         "movl   $(cp_end), %0\n\t"
         "movw   %%cs, %1\n\t"
         : "=mr"(int_passed_regs_spot->pm_entry), "=mr"(int_passed_regs_spot->pm_code_selector)
     );
-    /* copy code for switch to real mode and executing interrupt to first MB of RAM */
-    void *rm_swtch_code_dst = (void *)INT_FNC_SPOT;
+    /* copy code for switch to real mode and executing interrupt to first 64kB of RAM */
     __asm__ volatile(   "\t"
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
@@ -240,7 +268,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw   $intnum-cp_beg, %0\n\t"
         : "=rm"(interrupt_number_off)
     );
-    interrupt_number_ptr = (uint8_t *) (INT_FNC_SPOT+interrupt_number_off);
+    interrupt_number_ptr = (uint8_t *) (rm_swtch_code_dst+interrupt_number_off);
     *interrupt_number_ptr = interruptNumber;
     /* execute code that jumps to coppied function, which switches to real mode,
        loads registers with values passed to interrupt and executes interrupt */
@@ -287,7 +315,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    %%ax, %%gs\n\t"
         /* disable protected mode */
         "movl    %%cr0, %%eax\n\t"
-        "andl    %[cr0_prot_dis], %%eax\n\t"
+        "and     %[cr0_prot_dis], %%ax\n\t"
         "movl    %%eax, %%cr0\n\t"
         /* flush prefetch queue by far jumping */
         "ljmp    *"RM_ENTRY"(%%ebx)\n\t"
