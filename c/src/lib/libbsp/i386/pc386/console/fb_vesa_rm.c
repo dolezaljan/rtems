@@ -179,10 +179,13 @@ static uint16_t findModeByResolution(struct modeParams *modeList, uint8_t listLe
 /* returns mode number best fitting to monitor attached */
 static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLength) {
     union edid edid;
-    uint8_t checksum = 0;
-    uint8_t iterator = 0;
-    uint8_t j;
+    uint8_t checksum, iterator;
+    uint8_t index, j, ind;
+    uint8_t text[14];
     struct modeParams EDIDmode;
+    checksum = 0;
+    iterator = 0;
+    ind = 0;
     if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         printk("Function 15h (read EDID) not supported.\n");
@@ -202,7 +205,7 @@ static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLengt
         }
         /* try to find Detailed Timing Descriptor (defined in BASE EDID)
            in controller mode list; first should be preffered mode */
-        uint8_t index = 0;
+        index = 0;
         while(index < 4) {
             /* skip if it is monitor descriptor */
             if(edid.edid1.dtd_md[index].md.Flag0 == 0 && edid.edid1.dtd_md[index].md.Flag1 == 0) {
