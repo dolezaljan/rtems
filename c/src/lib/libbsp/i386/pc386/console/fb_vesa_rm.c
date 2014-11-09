@@ -163,29 +163,15 @@ struct modeParams {
     was 0 before call. */
 static uint16_t findModeByResolution(struct modeParams *modeList, uint8_t listLength, struct modeParams *searchedResolution) {
     uint8_t i = 0;
-    while(modeList[i].resX != searchedResolution->resX && i < listLength) {
-        i++;
-    }
-    while(modeList[i].resY != searchedResolution->resY && i < listLength) {
-        i++;
-    }
-    if(modeList[i].resX == searchedResolution->resX) {
-        if(searchedResolution->bpp != 0) {
-            while(modeList[i].bpp != searchedResolution->bpp && i < listLength) {
-                i++;
-            }
-            if(modeList[i].resX == searchedResolution->resX && modeList[i].resY == searchedResolution->resY) {
+    while(i < listLength) {
+        if(searchedResolution->resX == modeList[i].resX && searchedResolution->resY == modeList[i].resY) {
+            if(searchedResolution->bpp==0 || searchedResolution->bpp==modeList[i].bpp) {
                 searchedResolution->bpp = modeList[i].bpp;
                 searchedResolution->modeNumber = modeList[i].modeNumber;
                 return modeList[i].modeNumber;
             }
         }
-        else
-        {
-            searchedResolution->bpp = modeList[i].bpp;
-            searchedResolution->modeNumber = modeList[i].modeNumber;
-            return modeList[i].modeNumber;
-        }
+        i++;
     }
     return -1;
 }
