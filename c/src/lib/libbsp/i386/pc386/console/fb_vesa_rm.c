@@ -186,6 +186,7 @@ static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLengt
     checksum = 0;
     iterator = 0;
     ind = 0;
+    EDIDmode.bpp = 0;
     if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         printk("Function 15h (read EDID) not supported.\n");
