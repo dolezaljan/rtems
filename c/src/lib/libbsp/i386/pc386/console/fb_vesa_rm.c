@@ -242,7 +242,7 @@ static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLengt
     EDIDmode.bpp = 0;
     if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
-        printk("Function 15h (read EDID) not supported.\n");
+        printk(FB_VESA_NAME " Function 15h (read EDID) not supported.\n");
         return -1;
     }
 /* version of EDID structure */
@@ -255,7 +255,7 @@ static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLengt
         if(checksum)
         {
             /* TODO: try reading EDID again */
-            printk("\nEDID v1 checksum failed\n");
+            printk(FB_VESA_NAME " EDID v1 checksum failed\n");
         }
         /* try to find Detailed Timing Descriptor (defined in BASE EDID)
            in controller mode list; first should be preffered mode */
@@ -400,13 +400,13 @@ static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLengt
         }
         if(!checksum)
         {
-            printk("EDID v2 checksum OK\n");
+            printk(FB_VESA_NAME " EDID v2 checksum OK\n");
         }
-        printk("EDID v2 not implemented\n");
+        printk(FB_VESA_NAME " EDID v2 not implemented\n");
     }
     else
     {
-        printk("error reading EDID: no corresponding version\n");
+        printk(FB_VESA_NAME " error reading EDID: not known version\n");
     }
     return (uint16_t)-1;
 }
@@ -415,7 +415,7 @@ void vesa_realmode_bootup_init(void){
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)i386_get_primary_rm_buffer();
     if(VBEControllerInformation(vib, 0x300) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
-        printk("Function 00h (read VBE info block) not supported.\n");
+        printk(FB_VESA_NAME " Function 00h (read VBE info block) not supported.\n");
     }
 /*  Helper array is later filled with mode numbers and their parameters
     sorted from the biggest values to the smalest where priorities of
@@ -431,7 +431,7 @@ void vesa_realmode_bootup_init(void){
     uint16_t iterator = 0;
     if(*(uint16_t*)vib->VideoModePtr == VBE_STUB_VideoModeList)
     {
-        printk("VBE Core not implemented!\n");
+        printk(FB_VESA_NAME " VBE Core not implemented!\n");
     }
     else
     {
@@ -506,9 +506,12 @@ void vesa_realmode_bootup_init(void){
     /* first search for video argument in multiboot options */
     vbe_usedMode = findModeUsingCmdline(sortModeParams, numberOfModes);
     if(vbe_usedMode == (uint16_t)-1) {
+        printk(FB_VESA_NAME " video on command line not supported\n\ttrying EDID ...\n");
         /* second search monitor for good resolution */
         vbe_usedMode = findModeUsingEDID(sortModeParams, numberOfModes);
         if(vbe_usedMode == (uint16_t)-1) {
+            printk(FB_VESA_NAME " monitor's EDID video parameters not supported"
+                                "\n\tusing mode with highest resolution, bpp\n");
             /* third set highest values */
             vbe_usedMode = sortModeParams[0].modeNumber;
         }
@@ -517,7 +520,7 @@ void vesa_realmode_bootup_init(void){
     /* fill framebuffer structs with info about selected mode */
     uint16_t ret_vbe = VBEModeInformation(mib, vbe_usedMode);
     if((ret_vbe&0xff)!=VBE_functionSupported || (ret_vbe>>8)!=VBE_callSuccessful){
-        printk("Cannot get mode info anymore. ax=0x%x\n", ret_vbe);
+        printk(FB_VESA_NAME " Cannot get mode info anymore. ax=0x%x\n", ret_vbe);
     }
 
     fb_var.xres = mib->XResolution;
@@ -552,10 +555,10 @@ void vesa_realmode_bootup_init(void){
     ret_vbe = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(i386_get_primary_rm_buffer()));
     if(ret_vbe>>8 == VBE_callFailed)
     {
-        printk("VBE: Requested mode is not available.");
+        printk(FB_VESA_NAME " VBE: Requested mode is not available.");
     }
     if((ret_vbe&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8)){
-        printk("Call to function 2h (set VBE mode) failed. ax=0x%x\n", ret_vbe);
+        printk(FB_VESA_NAME " Call to function 2h (set VBE mode) failed. ax=0x%x\n", ret_vbe);
     }
 
     vib = (void *) 0;
