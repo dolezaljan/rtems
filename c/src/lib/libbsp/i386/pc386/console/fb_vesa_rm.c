@@ -342,7 +342,55 @@ static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLengt
         in controller mode list */
         /* not implemented */
         /* use Established Timings */
-        /* not implemented */
+        if(edid.edid1.EST_1280x1024_75Hz) {
+            EDIDmode.resX = 1280;
+            EDIDmode.resY = 1024;
+            EDIDmode.bpp = 0;
+            if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                return EDIDmode.modeNumber;
+        }
+        if(edid.edid1.EST_1152x870_75Hz) {
+            EDIDmode.resX = 1152;
+            EDIDmode.resY = 870;
+            EDIDmode.bpp = 0;
+            if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                return EDIDmode.modeNumber;
+        }
+        if(edid.edid1.EST_1024x768_75Hz || edid.edid1.EST_1024x768_70Hz || edid.edid1.EST_1024x768_60Hz || edid.edid1.EST_1024x768_87Hz) {
+            EDIDmode.resX = 1024;
+            EDIDmode.resY = 768;
+            EDIDmode.bpp = 0;
+            if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                return EDIDmode.modeNumber;
+        }
+        if(edid.edid1.EST_832x624_75Hz) {
+            EDIDmode.resX = 832;
+            EDIDmode.resY = 624;
+            EDIDmode.bpp = 0;
+            if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                return EDIDmode.modeNumber;
+        }
+        if(edid.edid1.EST_800x600_60Hz || edid.edid1.EST_800x600_56Hz || edid.edid1.EST_800x600_75Hz || edid.edid1.EST_800x600_72Hz) {
+            EDIDmode.resX = 800;
+            EDIDmode.resY = 600;
+            EDIDmode.bpp = 0;
+            if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                return EDIDmode.modeNumber;
+        }
+        if(edid.edid1.EST_720x400_88Hz || edid.edid1.EST_720x400_70Hz) {
+            EDIDmode.resX = 720;
+            EDIDmode.resY = 400;
+            EDIDmode.bpp = 0;
+            if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                return EDIDmode.modeNumber;
+        }
+        if(edid.edid1.EST_640x480_75Hz || edid.edid1.EST_640x480_72Hz || edid.edid1.EST_640x480_67Hz || edid.edid1.EST_640x480_60Hz) {
+            EDIDmode.resX = 640;
+            EDIDmode.resY = 480;
+            EDIDmode.bpp = 0;
+            if(findModeByResolution(modeList, listLength, &EDIDmode) != (uint16_t)-1)
+                return EDIDmode.modeNumber;
+        }
     }
     else if(edid.edid2.Version == 2) { /* EDID version 2 */
         while(iterator<sizeof(struct edid2))
