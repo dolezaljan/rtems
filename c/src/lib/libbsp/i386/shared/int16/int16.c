@@ -68,10 +68,17 @@ struct protected_mode_preserve_spots {
     uint16_t rm_data_segment;
 }__attribute__((__packed__));
 
-/* addresses where we are going to put Interrupt buffer, parameter/returned/preserved values, stack and copy code for calling BIOS interrupt real mode interface */
-#define REAL_MODE_SPOT   0xFD30
-/* current (0xFD30) REAL_MODE_SPOT value is top of real mode stack and
-   other realated data ends few bytes before end of first 64kB of memory */
+/* addresses where we are going to put Interrupt buffer,
+ * parameter/returned/preserved values, stack and copy code
+ * for calling BIOS interrupt real mode interface
+ * The value is chosen arbitrarily in the first 640kB
+ * to be accessible for real mode. It should be out of range
+ * used by RTEMS because its base address is above 1MB.
+ * It has to be above first 4kB (or better 64kB) which could
+ * be used by BIOS.
+ */
+#define REAL_MODE_SPOT   0x12000
+/* REAL_MODE_SPOT value is also top of real mode stack */
 
 /* buffers positions and lengths */
 #define DEFAULT_BUFFER_SIZE             512
@@ -128,9 +135,10 @@ static __DP_TYPE destroyRMDescriptors(void) {
  * @return __DP_YES descriptors are prepared
  * @return __DP_FAIL descriptors allocation failed (GDT too small)
  */
-static __DP_TYPE prepareRMDescriptors (void) {
+static __DP_TYPE prepareRMDescriptors (void *base32) {
+    static void *prevBase = (void *)-1;
     /* check if descriptors were prepared already */
-    if(descsPrepared == __DP_YES)
+    if(descsPrepared == __DP_YES && prevBase == base32)
         return descsPrepared;
     /* create 'real mode like' segment descriptors, for switching to real mode */
     rml_code_dsc_index = i386_find_empty_gdt_entry();
@@ -151,7 +159,7 @@ static __DP_TYPE prepareRMDescriptors (void) {
     flags_desc.fixed_value_bits    = 0x0;      /* bits 1  */
     flags_desc.operation_size      = 0x0;      /* bits 1  */
     flags_desc.granularity         = 0x0;      /* bits 1  */
-    if(i386_put_gdt_entry(rml_code_dsc_index, rml_base, rml_limit, &flags_desc)==0)
+    if(i386_put_gdt_entry(rml_code_dsc_index, (unsigned) base32, rml_limit, &flags_desc)==0)
     {
         /* selector to GDT out of range */
         destroyRMDescriptors();
@@ -169,14 +177,14 @@ static __DP_TYPE prepareRMDescriptors (void) {
     }
 
     flags_desc.type                = 0x2;      /* bits 4  */
-    if(i386_put_gdt_entry(rml_data_dsc_index, rml_base, rml_limit, &flags_desc)==0)
+    if(i386_put_gdt_entry(rml_data_dsc_index, (unsigned) base32, rml_limit, &flags_desc)==0)
     {
         /* selector to GDT out of range */
         destroyRMDescriptors();
         descsPrepared = __DP_FAIL;
         return descsPrepared;
     }
-    
+    prevBase = base32;
     descsPrepared = __DP_YES;
     return descsPrepared;
 }
@@ -200,8 +208,6 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     volatile struct protected_mode_preserve_spots pm_bkp, *pm_bkp_addr;
     unsigned short unused_offset;
     
-    if(prepareRMDescriptors()!=__DP_YES)
-	return 0;
     __asm__ volatile(   "\t"
         "movl    %%cr0, %%eax\n\t"
         "andl    %1, %%eax\n"
@@ -213,9 +219,12 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
 
     int_passed_regs_spot = (struct interrupt_registers_preserve_spots *)
                                 (first_rm_buffer_spot+first_rm_buffer_size);
-    /* position for real mode code reallocation to the first 64kB of RAM */
+    /* position for real mode code reallocation to the first 1MB of RAM */
     rm_swtch_code_dst = (void *)((uint32_t)int_passed_regs_spot+sizeof(*int_passed_regs_spot));
     rm_stack_top = (void *)INT_STACK_TOP;
+
+    if(prepareRMDescriptors(int_passed_regs_spot)!=__DP_YES)
+	return 0;
 
     pm_bkp_addr = &pm_bkp;
     i386_Physical_to_real_mode_ptr(
@@ -225,7 +234,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     );
     pm_bkp.rm_stack_pointer += STACK_SIZE;
     pm_bkp.rml_code_selector = (rml_code_dsc_index<<3);
-    pm_bkp.rml_entry = (uint32_t)rm_swtch_code_dst;
+    pm_bkp.rml_entry = ((uint32_t)rm_swtch_code_dst-(uint32_t)int_passed_regs_spot);
     pm_bkp.rml_data_selector = (rml_data_dsc_index<<3);
     i386_Physical_to_real_mode_ptr(
         int_passed_regs_spot,
@@ -250,7 +259,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw   %%cs, %1\n\t"
         : "=mr"(int_passed_regs_spot->pm_entry), "=mr"(int_passed_regs_spot->pm_code_selector)
     );
-    /* copy code for switch to real mode and executing interrupt to first 64kB of RAM */
+    /* copy code for switch to real mode and executing interrupt to first MB of RAM */
     __asm__ volatile(   "\t"
         "movl    $cp_end-cp_beg, %%ecx\n\t"
         "cld\n\t"
@@ -317,8 +326,10 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movl    %%cr0, %%eax\n\t"
         "and     %[cr0_prot_dis], %%ax\n\t"
         "movl    %%eax, %%cr0\n\t"
+        /* base for data selector of 16-bit protected mode is at beginning of passed regs */
+        "xorl    %%edi, %%edi\n\t"
         /* flush prefetch queue by far jumping */
-        "ljmp    *"RM_ENTRY"(%%ebx)\n\t"
+        "ljmp    *"RM_ENTRY"(%%edi)\n\t"
 "rment: "
         /* establish rm stack - esp was already set in 32-bit protected mode*/
         "movw    %%cx, %%ss\n\t"
