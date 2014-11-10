@@ -52,8 +52,8 @@ struct interrupt_registers_preserve_spots { /* used for passing parameters, fetc
 #define RML_ENTRY       "0x0C"
 #define RML_D_SEL       "0x12"
 #define RM_SS           "0x14"
-#define RM_ESP          "0x16"
-#define RM_DS           "0x1A"
+#define RM_SP           "0x16"
+#define RM_DS           "0x18"
 struct protected_mode_preserve_spots {
     uint16_t idtr_lim_bkp;
     uint32_t idtr_base_bkp;
@@ -64,7 +64,7 @@ struct protected_mode_preserve_spots {
     uint16_t rml_code_selector;
     uint16_t rml_data_selector;
     uint16_t rm_stack_segment;
-    uint32_t rm_stack_pointer;
+    uint16_t rm_stack_pointer;
     uint16_t rm_data_segment;
 }__attribute__((__packed__));
 
@@ -299,7 +299,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "movw    "RM_DS"(%%esi), %%dx\n\t"
         /* prepare real mode stack values */
         "movw    "RM_SS"(%%esi), %%cx\n\t"
-        "movl    "RM_ESP"(%%esi), %%esp\n\t"
+        "movzwl  "RM_SP"(%%esi), %%esp\n\t"
         /* jump to copied function and */
         /* load 'real mode like' code selector */
         "ljmp   *"RML_ENTRY"(%%esi)\n"
