@@ -327,9 +327,8 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         "and     %[cr0_prot_dis], %%ax\n\t"
         "movl    %%eax, %%cr0\n\t"
         /* base for data selector of 16-bit protected mode is at beginning of passed regs */
-        "xorl    %%edi, %%edi\n\t"
         /* flush prefetch queue by far jumping */
-        "ljmp    *"RM_ENTRY"(%%edi)\n\t"
+        "ljmp    *"RM_ENTRY"\n\t"
 "rment: "
         /* establish rm stack - esp was already set in 32-bit protected mode*/
         "movw    %%cx, %%ss\n\t"
