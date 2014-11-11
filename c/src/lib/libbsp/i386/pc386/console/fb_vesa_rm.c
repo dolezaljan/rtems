@@ -65,7 +65,7 @@ inline uint32_t VBEControllerInformation(   struct VBE_VbeInfoBlock *infoBlock,
     parret.reg_edi = (uint32_t)off;
     parret.reg_es = seg;
     /* indicate to graphic's bios that VBE2.0 extended information is desired */
-    if(queriedVBEVersion >= 0x200)
+    if (queriedVBEVersion >= 0x200)
     {
         strncpy(
             (char *)&VBE_buffer->VbeSignature,
@@ -73,9 +73,9 @@ inline uint32_t VBEControllerInformation(   struct VBE_VbeInfoBlock *infoBlock,
             4*sizeof(size_t)
         );
     }
-    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if (i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret) == 0)
         return -1;
-    if((parret.reg_eax & 0xFFFF) ==
+    if ((parret.reg_eax & 0xFFFF) ==
         (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         *infoBlock = *VBE_buffer;
@@ -95,9 +95,9 @@ inline uint32_t VBEModeInformation( struct VBE_ModeInfoBlock *infoBlock,
     i386_Physical_to_real_mode_ptr(VBE_buffer, &seg, &off);
     parret.reg_edi = (uint32_t)off;
     parret.reg_es = seg;
-    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if (i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret) == 0)
         return -1;
-    if((parret.reg_eax & 0xFFFF) ==
+    if ((parret.reg_eax & 0xFFFF) ==
         (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         *infoBlock = *VBE_buffer;
@@ -119,7 +119,7 @@ inline uint32_t VBESetMode( uint16_t modeNumber,
     i386_Physical_to_real_mode_ptr(VBE_buffer, &seg, &off);
     parret.reg_edi = (uint32_t)off;
     parret.reg_es = seg;
-    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if (i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret) == 0)
         return -1;
     return (parret.reg_eax & 0xFFFF);
 }
@@ -128,7 +128,7 @@ inline uint32_t VBECurrentMode(uint16_t *modeNumber)
 {
     struct interrupt_registers parret;
     parret.reg_eax = VBE_RetCurVBEMod;
-    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if (i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret) == 0)
         return -1;
     *modeNumber = (uint16_t)parret.reg_ebx;
     return (parret.reg_eax & 0xFFFF);
@@ -144,7 +144,7 @@ inline uint32_t VBEReportDDCCapabilities(   uint16_t controllerUnitNumber,
     parret.reg_ecx = controllerUnitNumber;
     parret.reg_edi = 0;
     parret.reg_es = 0;
-    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if (i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret) == 0)
         return -1;
     *secondsToTransferEDIDBlock = (uint8_t)parret.reg_ebx >> 8;
     *DDCLevelSupported = (uint8_t)parret.reg_ebx;
@@ -165,9 +165,9 @@ inline uint32_t VBEReadEDID(uint16_t controllerUnitNumber,
     i386_Physical_to_real_mode_ptr(VBE_buffer, &seg, &off);
     parret.reg_edi = (uint32_t)off;
     parret.reg_es = seg;
-    if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
+    if (i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret) == 0)
         return -1;
-    if((parret.reg_eax & 0xFFFF) ==
+    if ((parret.reg_eax & 0xFFFF) ==
         (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         *buffer = *VBE_buffer;
@@ -193,12 +193,12 @@ static uint16_t findModeByResolution(   struct modeParams *modeList,
                                         struct modeParams *searchedResolution)
 {
     uint8_t i = 0;
-    while(i < listLength)
+    while (i < listLength)
     {
-        if( searchedResolution->resX == modeList[i].resX &&
+        if (searchedResolution->resX == modeList[i].resX &&
             searchedResolution->resY == modeList[i].resY)
         {
-            if( searchedResolution->bpp==0 ||
+            if (searchedResolution->bpp==0 ||
                 searchedResolution->bpp==modeList[i].bpp)
             {
                 searchedResolution->bpp = modeList[i].bpp;
@@ -228,11 +228,11 @@ static uint16_t findModeUsingCmdline(   struct modeParams *modeList,
     char* endptr;
     cmdlineMode.bpp = 0;
     opt = bsp_cmdline_arg("--video=");
-    if(opt)
+    if (opt)
     {
         opt += sizeof("--video=")-1;
         cmdlineMode.resX = strtol(opt, &endptr, 10);
-        if(*endptr != 'x')
+        if (*endptr != 'x')
         {
             return -1;
         }
@@ -242,12 +242,12 @@ static uint16_t findModeUsingCmdline(   struct modeParams *modeList,
         {
             case '-':
                 opt = endptr+1;
-                if(strlen(opt)<=2)
+                if (strlen(opt) <= 2)
                     cmdlineMode.bpp = strtol(opt, &endptr, 10);
                 else
                 {
                     cmdlineMode.bpp = strtol(opt, &endptr, 10);
-                    if(*endptr != ' ')
+                    if (*endptr != ' ')
                     {
                         return -1;
                     }
@@ -259,7 +259,7 @@ static uint16_t findModeUsingCmdline(   struct modeParams *modeList,
                 return -1;
         }
 
-        if(findModeByResolution(modeList, listLength, &cmdlineMode) !=
+        if (findModeByResolution(modeList, listLength, &cmdlineMode) !=
             (uint16_t)-1)
             return cmdlineMode.modeNumber;
     }
@@ -277,30 +277,31 @@ static uint16_t findModeUsingEDID(  struct modeParams *modeList,
     checksum = 0;
     iterator = 0;
     EDIDmode.bpp = 0;
-    if(VBEReadEDID(0, 0, &edid) !=
+    if (VBEReadEDID(0, 0, &edid) !=
         (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         printk(FB_VESA_NAME " Function 15h (read EDID) not supported.\n");
         return -1;
     }
 /* version of EDID structure */
-    if(edid.edid1.Version == 1)
+    if (edid.edid1.Version == 1)
     { /* EDID version 1 */
-        while(iterator<sizeof(struct edid1))
+        while (iterator < sizeof(struct edid1))
         {
             checksum += *((uint8_t *)&edid+iterator);
             iterator++;
         }
-        if(checksum)
+        if (checksum)
             /* not implemented: try to read EDID again */
             printk(FB_VESA_NAME " EDID v1 checksum failed\n");
+
         /* try to find Detailed Timing Descriptor (defined in BASE EDID)
            in controller mode list; first should be preffered mode */
         index = 0;
-        while(index < 4)
+        while (index < 4)
         {
             /* skip if it is monitor descriptor */
-            if( edid.edid1.dtd_md[index].md.Flag0 == 0 &&
+            if (edid.edid1.dtd_md[index].md.Flag0 == 0 &&
                 edid.edid1.dtd_md[index].md.Flag1 == 0)
             {
                 index++;
@@ -310,22 +311,23 @@ static uint16_t findModeUsingEDID(  struct modeParams *modeList,
                             edid.edid1.dtd_md[0].dtd.HorizontalActiveLow);
             EDIDmode.resY = (edid.edid1.dtd_md[0].dtd.VerticalActiveHigh<<8 |
                             edid.edid1.dtd_md[0].dtd.VerticalActiveLow);
-            if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+            if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                 (uint16_t)-1)
                 return EDIDmode.modeNumber;
+
             index++;
         }
         /* try to find Detailed Timing Descriptor (defined in optional EXTENSION
         Blocks) in controller mode list */
-        if(edid.edid1.ExtensionFlag > 0)
+        if (edid.edid1.ExtensionFlag > 0)
         {
             /* not implemented */
         }
         /* try to find CVT (defined in BASE EDID) in controller mode list */
         index = 1;
-        while(index < 4)
+        while (index < 4)
         {
-            if( edid.edid1.dtd_md[index].md.Flag0 == 0  &&
+            if (edid.edid1.dtd_md[index].md.Flag0 == 0  &&
                 edid.edid1.dtd_md[index].md.Flag1 == 0  &&
                 edid.edid1.dtd_md[index].md.DataTypeTag ==
                     EDID_DTT_CVT3ByteTimingCodes        &&
@@ -334,11 +336,11 @@ static uint16_t findModeUsingEDID(  struct modeParams *modeList,
                 struct CVTTimingCodes3B *cvt = (struct CVTTimingCodes3B *)
                     &edid.edid1.dtd_md[index].md.DescriptorData[0];
                 j = 0;
-                while(j < 4)
+                while (j < 4)
                 {
                     EDIDmode.resY = (cvt->cvt[j].AddressableLinesLow |
                         cvt->cvt[j].AddressableLinesHigh<<8);
-                    switch(cvt->cvt[j].AspectRatio)
+                    switch (cvt->cvt[j].AspectRatio)
                     {
                         case EDID_CVT_AspectRatio_4_3:
                             EDIDmode.resX = (EDIDmode.resY*4)/3;
@@ -354,9 +356,10 @@ static uint16_t findModeUsingEDID(  struct modeParams *modeList,
                             break;
                     }
                     EDIDmode.resX = (EDIDmode.resX/8)*8;
-                    if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+                    if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                         (uint16_t)-1)
                         return EDIDmode.modeNumber;
+
                     j++;
                 }
             }
@@ -368,16 +371,16 @@ static uint16_t findModeUsingEDID(  struct modeParams *modeList,
         /* try to find Standard Timings (listed in BASE EDID)
         in controller mode list */
         index = 0;
-        while(index < 8)
+        while (index < 8)
         {
             /* check if descriptor is unused */
-            if(*(uint16_t*)&edid.edid1.STI[index] == EDID_STI_DescriptorUnused)
+            if (*(uint16_t*)&edid.edid1.STI[index] == EDID_STI_DescriptorUnused)
             {
                 index++;
                 continue;
             }
             EDIDmode.resX = (edid.edid1.STI[index].HorizontalActivePixels+31)*8;
-            switch(edid.edid1.STI[index].ImageAspectRatio)
+            switch (edid.edid1.STI[index].ImageAspectRatio)
             {
                 case EDID_STI_AspectRatio_16_10:
                     EDIDmode.resY = (EDIDmode.resX*10)/16;
@@ -392,34 +395,35 @@ static uint16_t findModeUsingEDID(  struct modeParams *modeList,
                     EDIDmode.resY = (EDIDmode.resX*9)/16;
                     break;
             }
-            if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+            if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                 (uint16_t)-1)
                 return EDIDmode.modeNumber;
+
             index++;
         }
         /* try to find Standard Timings (listed in optional EXTENSION Blocks)
         in controller mode list */
         /* not implemented */
         /* use Established Timings */
-        if(edid.edid1.EST_1280x1024_75Hz)
+        if (edid.edid1.EST_1280x1024_75Hz)
         {
             EDIDmode.resX = 1280;
             EDIDmode.resY = 1024;
             EDIDmode.bpp = 0;
-            if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+            if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                 (uint16_t)-1)
                 return EDIDmode.modeNumber;
         }
-        if(edid.edid1.EST_1152x870_75Hz)
+        if (edid.edid1.EST_1152x870_75Hz)
         {
             EDIDmode.resX = 1152;
             EDIDmode.resY = 870;
             EDIDmode.bpp = 0;
-            if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+            if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                 (uint16_t)-1)
                 return EDIDmode.modeNumber;
         }
-        if( edid.edid1.EST_1024x768_75Hz ||
+        if (edid.edid1.EST_1024x768_75Hz ||
             edid.edid1.EST_1024x768_70Hz ||
             edid.edid1.EST_1024x768_60Hz ||
             edid.edid1.EST_1024x768_87Hz)
@@ -427,20 +431,20 @@ static uint16_t findModeUsingEDID(  struct modeParams *modeList,
             EDIDmode.resX = 1024;
             EDIDmode.resY = 768;
             EDIDmode.bpp = 0;
-            if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+            if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                 (uint16_t)-1)
                 return EDIDmode.modeNumber;
         }
-        if(edid.edid1.EST_832x624_75Hz)
+        if (edid.edid1.EST_832x624_75Hz)
         {
             EDIDmode.resX = 832;
             EDIDmode.resY = 624;
             EDIDmode.bpp = 0;
-            if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+            if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                 (uint16_t)-1)
                 return EDIDmode.modeNumber;
         }
-        if( edid.edid1.EST_800x600_60Hz ||
+        if (edid.edid1.EST_800x600_60Hz ||
             edid.edid1.EST_800x600_56Hz ||
             edid.edid1.EST_800x600_75Hz ||
             edid.edid1.EST_800x600_72Hz)
@@ -448,20 +452,20 @@ static uint16_t findModeUsingEDID(  struct modeParams *modeList,
             EDIDmode.resX = 800;
             EDIDmode.resY = 600;
             EDIDmode.bpp = 0;
-            if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+            if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                 (uint16_t)-1)
                 return EDIDmode.modeNumber;
         }
-        if(edid.edid1.EST_720x400_88Hz || edid.edid1.EST_720x400_70Hz)
+        if (edid.edid1.EST_720x400_88Hz || edid.edid1.EST_720x400_70Hz)
         {
             EDIDmode.resX = 720;
             EDIDmode.resY = 400;
             EDIDmode.bpp = 0;
-            if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+            if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                 (uint16_t)-1)
                 return EDIDmode.modeNumber;
         }
-        if( edid.edid1.EST_640x480_75Hz ||
+        if (edid.edid1.EST_640x480_75Hz ||
             edid.edid1.EST_640x480_72Hz ||
             edid.edid1.EST_640x480_67Hz ||
             edid.edid1.EST_640x480_60Hz)
@@ -469,22 +473,21 @@ static uint16_t findModeUsingEDID(  struct modeParams *modeList,
             EDIDmode.resX = 640;
             EDIDmode.resY = 480;
             EDIDmode.bpp = 0;
-            if(findModeByResolution(modeList, listLength, &EDIDmode) !=
+            if (findModeByResolution(modeList, listLength, &EDIDmode) !=
                 (uint16_t)-1)
                 return EDIDmode.modeNumber;
         }
     }
-    else if(edid.edid2.Version == 2)
+    else if (edid.edid2.Version == 2)
     { /* EDID version 2 */
-        while(iterator<sizeof(struct edid2))
+        while (iterator < sizeof(struct edid2))
         {
             checksum += *((uint8_t *)&edid+iterator);
             iterator++;
         }
-        if(!checksum)
-        {
+        if (!checksum)
             printk(FB_VESA_NAME " EDID v2 checksum OK\n");
-        }
+
         printk(FB_VESA_NAME " EDID v2 not implemented\n");
     }
     else
@@ -498,12 +501,12 @@ void vesa_realmode_bootup_init(void)
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)
         i386_get_primary_rm_buffer();
     vbe_ret_val = VBEControllerInformation(vib, 0x300);
-    if(vbe_ret_val == -1)
+    if (vbe_ret_val == -1)
     {
         printk(FB_VESA_NAME " error calling real mode interrupt.\n");
         return;
     }
-    if(vbe_ret_val != (VBE_callSuccessful<<8 | VBE_functionSupported))
+    if (vbe_ret_val != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         printk(FB_VESA_NAME " Function 00h (read VBE info block)"
             "not supported.\n");
@@ -521,17 +524,17 @@ void vesa_realmode_bootup_init(void)
     uint16_t *modeNOPtr = (uint16_t*)
         i386_Real_mode_ptr_to_physical((void *)vib->VideoModePtr);
     uint16_t iterator = 0;
-    if(*(uint16_t*)vib->VideoModePtr == VBE_STUB_VideoModeList)
+    if (*(uint16_t*)vib->VideoModePtr == VBE_STUB_VideoModeList)
     {
         printk(FB_VESA_NAME " VBE Core not implemented!\n");
     }
     else
     {
         /* prepare list of modes */
-        while(*(modeNOPtr+iterator) != VBE_END_OF_VideoModeList &&
+        while (*(modeNOPtr+iterator) != VBE_END_OF_VideoModeList &&
             *(modeNOPtr+iterator) != 0)
         { /* some bios implementations ends the list incorrectly with 0 */
-            if(iterator < MAX_NO_OF_SORTED_MODES)
+            if (iterator < MAX_NO_OF_SORTED_MODES)
             {
                 sortModeParams[iterator].modeNumber = *(modeNOPtr+iterator);
                 iterator ++;
@@ -539,7 +542,7 @@ void vesa_realmode_bootup_init(void)
             else
                 break;
         }
-        if(iterator < MAX_NO_OF_SORTED_MODES)
+        if (iterator < MAX_NO_OF_SORTED_MODES)
             sortModeParams[iterator].modeNumber = 0;
     }
 
@@ -551,11 +554,11 @@ void vesa_realmode_bootup_init(void)
         VBE_ColorModeMask | VBE_GraphicsModeMask | VBE_LinFraBufModeAvaiMask;
     /* get parameters of modes and filter modes according to set
         required parameters */
-    while(iterator < MAX_NO_OF_SORTED_MODES &&
+    while (iterator < MAX_NO_OF_SORTED_MODES &&
         sortModeParams[iterator].modeNumber!=0)
     {
         VBEModeInformation(mib, sortModeParams[iterator].modeNumber);
-        if((mib->ModeAttributes&required_mode_attributes) ==
+        if ((mib->ModeAttributes&required_mode_attributes) ==
             required_mode_attributes)
         {
             sortModeParams[nextFilteredMode].modeNumber =
@@ -575,28 +578,28 @@ void vesa_realmode_bootup_init(void)
     iterator = 0;
     uint8_t j;
     uint8_t idxBestMode;
-    while(iterator < numberOfModes)
+    while (iterator < numberOfModes)
     {
         idxBestMode = iterator;
         j = iterator+1;
-        while(j < numberOfModes)
+        while (j < numberOfModes)
         {
-            if(sortModeParams[j].resX > sortModeParams[idxBestMode].resX)
+            if (sortModeParams[j].resX > sortModeParams[idxBestMode].resX)
                 idxBestMode = j;
             else if (sortModeParams[j].resX == sortModeParams[idxBestMode].resX)
             {
-                if(sortModeParams[j].resY > sortModeParams[idxBestMode].resY)
+                if (sortModeParams[j].resY > sortModeParams[idxBestMode].resY)
                     idxBestMode = j;
                 else if (sortModeParams[j].resY ==
                     sortModeParams[idxBestMode].resY)
                 {
-                    if(sortModeParams[j].bpp > sortModeParams[idxBestMode].bpp)
+                    if (sortModeParams[j].bpp > sortModeParams[idxBestMode].bpp)
                         idxBestMode = j;
                 }
             }
             j++;
         }
-        if(idxBestMode != iterator)
+        if (idxBestMode != iterator)
         {
             modeXchgPlace = sortModeParams[iterator];
             sortModeParams[iterator] = sortModeParams[idxBestMode];
@@ -607,13 +610,13 @@ void vesa_realmode_bootup_init(void)
 
     /* first search for video argument in multiboot options */
     vbe_usedMode = findModeUsingCmdline(sortModeParams, numberOfModes);
-    if(vbe_usedMode == (uint16_t)-1)
+    if (vbe_usedMode == (uint16_t)-1)
     {
         printk(FB_VESA_NAME " video on command line not supported"
             "\n\ttrying EDID ...\n");
         /* second search monitor for good resolution */
         vbe_usedMode = findModeUsingEDID(sortModeParams, numberOfModes);
-        if(vbe_usedMode == (uint16_t)-1)
+        if (vbe_usedMode == (uint16_t)-1)
         {
             printk(FB_VESA_NAME" monitor's EDID video parameters not supported"
                                "\n\tusing mode with highest resolution, bpp\n");
@@ -624,7 +627,7 @@ void vesa_realmode_bootup_init(void)
 
     /* fill framebuffer structs with info about selected mode */
     vbe_ret_val = VBEModeInformation(mib, vbe_usedMode);
-    if((vbe_ret_val&0xff)!=VBE_functionSupported ||
+    if ((vbe_ret_val&0xff)!=VBE_functionSupported ||
         (vbe_ret_val>>8)!=VBE_callSuccessful)
     {
         printk(FB_VESA_NAME " Cannot get mode info anymore. ax=0x%x\n",
@@ -651,7 +654,7 @@ void vesa_realmode_bootup_init(void)
     fb_fix.line_length = mib->LinBytesPerScanLine;
     fb_fix.smem_len    = fb_fix.line_length*fb_var.yres;
     fb_fix.type        = FB_TYPE_PACKED_PIXELS;
-    if(fb_var.bits_per_pixel < 24)
+    if (fb_var.bits_per_pixel < 24)
         fb_fix.visual  = FB_VISUAL_DIRECTCOLOR;
     else
         fb_fix.visual  = FB_VISUAL_TRUECOLOR;
@@ -659,9 +662,10 @@ void vesa_realmode_bootup_init(void)
     /* set selected mode */
     vbe_ret_val = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,
         (struct VBE_CRTCInfoBlock *)(i386_get_primary_rm_buffer()));
-    if(vbe_ret_val>>8 == VBE_callFailed)
+    if (vbe_ret_val>>8 == VBE_callFailed)
         printk(FB_VESA_NAME " VBE: Requested mode is not available.");
-    if((vbe_ret_val&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8))
+
+    if ((vbe_ret_val&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8))
         printk(FB_VESA_NAME " Call to function 2h (set VBE mode) failed. "
             "ax=0x%x\n", vbe_ret_val);
 
@@ -709,7 +713,7 @@ frame_buffer_open(
 {
     printk( FB_VESA_NAME " open device\n" );
 
-    if (pthread_mutex_trylock(&vesa_mutex)!= 0)
+    if (pthread_mutex_trylock(&vesa_mutex) != 0)
     {
         printk( FB_VESA_NAME " could not lock vesa_mutex\n" );
 
@@ -817,7 +821,7 @@ frame_buffer_control(
     printk("fbxres %d, fbyres %d\n", fb_var.xres, fb_var.yres);
     printk("fbbpp %d\n", fb_var.bits_per_pixel);
 
-  switch( args->command )
+  switch (args->command)
   {
   case FBIOGET_FSCREENINFO:
       args->ioctl_return =
