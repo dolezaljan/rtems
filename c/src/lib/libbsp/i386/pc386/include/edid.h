@@ -61,7 +61,7 @@ struct DetailedTimingDescriptor{
     uint8_t VerticalBlankingHigh            : 4;
     uint8_t VerticalActiveHigh              : 4;
     uint8_t HorizontalSyncOffsetLow;
-    uint8_t HorizontalSyncPulseWidthLow;    
+    uint8_t HorizontalSyncPulseWidthLow;
     uint8_t VerticalSyncPulseWidthLow       : 4;
     uint8_t VerticalSyncOffsetLow           : 4;
     uint8_t VerticalSyncPulseWidthHigh      : 2;
@@ -536,7 +536,7 @@ struct DisplayTimingRangeLimits {
     uint8_t MaxFrameFieldRateInHzHigh;
     uint8_t MinLineRateInkHzHigh;
     uint8_t MaxLineRateInkHzHigh;
-    uint8_t MaxLineRateInkHzLow             : 2; 
+    uint8_t MaxLineRateInkHzLow             : 2;
     uint8_t MinLineRateInkHzLow             : 2;
     uint8_t MaxFrameFieldRateInHzLow        : 2;
     uint8_t MinFrameFieldRateInHzLow        : 2;

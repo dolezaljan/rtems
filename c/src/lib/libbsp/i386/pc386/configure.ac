@@ -91,7 +91,7 @@ if test "${USE_VBE_RM}" = "1" ; then
   if test -z "${NUM_APP_DRV_GDT_DESCRIPTORS}"; then
       NUM_APP_DRV_GDT_DESCRIPTORS=2 ;
   else
-      NUM_APP_DRV_GDT_DESCRIPTORS+=2 ; 
+      NUM_APP_DRV_GDT_DESCRIPTORS+=2 ;
   fi
 fi
 RTEMS_BSPOPTS_SET([NUM_APP_DRV_GDT_DESCRIPTORS],[*],[0])

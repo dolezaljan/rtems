@@ -92,7 +92,7 @@ uint32_t VBECurrentMode (
 /**
  * Gets information about display data channel implemented in the
  * graphic's controller.
- * 
+ *
  * @param controllerUnitNumber
  * @param secondsToTransferEDIDBlock approximate time to transfer one EDID block
  *                                   rounded up to seconds
@@ -112,7 +112,7 @@ uint32_t VBEReportDDCCapabilities (
  *
  * @param controllerUnitNumber
  * @param EDIDBlockNumber block no. to be read from the display
- * @param buffer place to store block fetched from the display 
+ * @param buffer place to store block fetched from the display
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  *          -1 error calling graphical bios
  */

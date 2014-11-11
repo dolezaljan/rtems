@@ -20,7 +20,7 @@
 /*
  *  Hardware is completely initialized upon boot of the system.
  *  Therefore there is no way to change graphics mode later.
- *  
+ *
  *  Interrupt 0x10 is used for entering graphics BIOS.
  */
 
@@ -211,10 +211,10 @@ static uint16_t findModeByResolution(   struct modeParams *modeList,
     return -1;
 }
 
-/*  
+/*
  * Parse comandline option "--video=" if available.
  *  expected format
- *  --video=<resX>x<resY>[-<bpp>] 
+ *  --video=<resX>x<resY>[-<bpp>]
  *  numbers <resX>, <resY> and <bpp> are decadic
  *
  * @return video mode number to be set
@@ -258,7 +258,7 @@ static uint16_t findModeUsingCmdline(   struct modeParams *modeList,
             default:
                 return -1;
         }
-        
+
         if(findModeByResolution(modeList, listLength, &cmdlineMode) !=
             (uint16_t)-1)
             return cmdlineMode.modeNumber;
