@@ -198,20 +198,20 @@ void *i386_Real_mode_ptr_to_physical(
  *  i386_Physical_to_real_mode_ptr
  *  Retreives real mode pointer elements {segmnet, offset} from physical address
  *  Function returns the highest segment (base) address possible.
- *  Example: 	input	address - 0x4B3A2
- *		output	segment - 0x4B3A
- *			offset	- 0x2
- *  	 	input	address - 0x10F12E
- *		output	segment - 0xFFFF
- *			offset	- 0xF13E
+ *  Example:    input   address - 0x4B3A2
+ *              output  segment - 0x4B3A
+ *                      offset  - 0x2
+ *              input   address - 0x10F12E
+ *              output  segment - 0xFFFF
+ *                      offset  - 0xF13E
  *
  *  return  0 address not convertible, must be less than 0x10FFEF
- *          1 segment and offset extracted 
+ *          1 segment and offset extracted
  */
 int i386_Physical_to_real_mode_ptr(
   void *address,
   unsigned short *segment,
-  unsigned short *offset 
+  unsigned short *offset
 );
 
 /*

@@ -337,10 +337,11 @@ SYM (i386_Real_mode_ptr_to_physical):
  *  int i386_Physical_to_real_mode_ptr(
  *     void     *address,
  *     unsigned short *segment,
- *     unsigned short *offset 
+ *     unsigned short *offset
  *  );
  *
- *  Fills segment:offest realmode pointer counted from thirty-two bit physical address.
+ *  Fills segment:offest realmode pointer counted from thirty-two bit physical
+ *  address.
  *  Returns 0 if unconvertible, 1 if successfuly converted.
  */
 
