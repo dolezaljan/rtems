@@ -306,91 +306,19 @@ int i386_set_gdt_entry (unsigned short segment_selector_index, unsigned base,
     return i386_raw_gdt_entry(segment_selector_index, &gdt_entry);
 }
 
-int i386_put_gdt_entry (unsigned short segment_selector_index, unsigned base,
-			unsigned limit, segment_descriptors* sd_flags)
-{
-    i386_fill_segment_desc_limit(limit, sd_flags);
-    i386_fill_segment_desc_base(base, sd_flags);
-
-    if ( segment_selector_index != 0 )
-    {
-        return i386_raw_gdt_entry(segment_selector_index, sd_flags);
-    }
-
-    return 3;
-}
-
-int i386_segment_desc_in_use (unsigned short segment_selector_index)
-{
-    unsigned short              segmentation_reg;
-
-    __asm__ volatile( "movw %%ds,%0\n\t"
-                    : "=r" (segmentation_reg)
-                    );
-    if((segmentation_reg>>3)==segment_selector_index)
-        return 1;
-    __asm__ volatile( "movw %%es,%0\n\t"
-                    : "=r" (segmentation_reg)
-                    );
-    if((segmentation_reg>>3)==segment_selector_index)
-        return 1;
-    __asm__ volatile( "movw %%fs,%0\n\t"
-                    : "=r" (segmentation_reg)
-                    );
-    if((segmentation_reg>>3)==segment_selector_index)
-        return 1;
-    __asm__ volatile( "movw %%gs,%0\n\t"
-                    : "=r" (segmentation_reg)
-                    );
-    if((segmentation_reg>>3)==segment_selector_index)
-        return 1;
-    __asm__ volatile( "movw %%ss,%0\n\t"
-                    : "=r" (segmentation_reg)
-                    );
-    if((segmentation_reg>>3)==segment_selector_index)
-        return 1;
-    __asm__ volatile( "movw %%cs,%0\n\t"
-                    : "=r" (segmentation_reg)
-                    );
-    if((segmentation_reg>>3)==segment_selector_index)
-        return 1;
-
-    return 0;
-}
-
-int i386_free_gdt_entry (unsigned short segment_selector_index)
+unsigned short i386_next_empty_gdt_entry ()
 {
     unsigned 			gdt_limit;
-    unsigned int*               clear_tmp;
     segment_descriptors* 	gdt_entry_tbl;
+    /* initial amount of filled descriptors */
+    static unsigned short       segment_selector_index = 2;
 
+    segment_selector_index += 1;
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
-
-    if ( segment_selector_index >= (gdt_limit+1)/8 || segment_selector_index == 0 ) {
+    if ( segment_selector_index >= (gdt_limit+1)/8 ) {
       return 0;
     }
-
-    /* mark as free by setting all bits to 0 */
-    clear_tmp = (unsigned int*) &gdt_entry_tbl[segment_selector_index];
-    *clear_tmp = 0;
-    *(clear_tmp+1) = 0;
-
-    return 1;
-}
-
-unsigned short i386_find_empty_gdt_entry ()
-{
-    unsigned 			gdt_limit;
-    unsigned short              segment_selector_index;
-    unsigned int*               empty_tmp;
-    segment_descriptors* 	gdt_entry_tbl;
-
-    i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
-    for(segment_selector_index = 1;segment_selector_index<(gdt_limit+1)/8;segment_selector_index++){
-        empty_tmp = (unsigned int*) &gdt_entry_tbl[segment_selector_index];
-        if(*empty_tmp == 0 && *(empty_tmp+1) == 0)return segment_selector_index;
-    }
-    return 0;
+    return segment_selector_index;
 }
 
 unsigned short i386_cpy_gdt_entry(unsigned short segment_selector_index, segment_descriptors* strucToFill)

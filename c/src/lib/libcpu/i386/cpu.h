@@ -306,61 +306,13 @@ extern void i386_fill_segment_desc_limit(unsigned limit, segment_descriptors* sd
 extern int i386_set_gdt_entry (unsigned short segment_selector, unsigned base,
 					     unsigned limit);
 
-/** 
- * C callable function:
- * Sets up one descriptor with predefined flags in @sd_flags. @base and @limit
- * will be parsed into @sd_flags. This descriptor will replace original
- * descriptor in GDT on @segment_selector position, unless @segment_selector==0,
- * if so, only @base and @limit are filled into @sd_flags. Granularity flag is
- * modified depending on the specified limit.
- * 
- * @param segment_selector index to GDT table, where new descriptor will be stored
- * @param base base address of new segment
- * @param limit number of limit bytes of new segment (granularity bit will be set if needed)
- * @param sd_flags @limit and @base will be filled in and alogn with prepared flags, this will be copied into GDT at @segment_selector index
- * @return  0 FAILED out of GDT range 
- *          1 SUCCESS @sd_flags filled and descriptor put in GDT 
- *          3 SUCCESS @sd_flags filled 
- */ 
-extern int i386_put_gdt_entry(unsigned short segment_selector,unsigned int base, 
-                              unsigned int limit,segment_descriptors* sd_flags); 
-
 /**
- * C callable function:
- * Determines whether any of segmentation register are currently referencing
- * to the GDT at given index
+ * C callable function returns next empty descriptor in GDT.
  *
- * @param segment_selector_index index to GDT table, which is searched for in
- *          index part of segmentation registers
- * @return  0 Usage Not Found
- *          1 At least one segmentation register uses segment descriptor
- *              from GDT at @segment_selector_index position
- */
-int i386_segment_desc_in_use (unsigned short segment_selector_index);
-
-/**
- * C callable function clearing descriptor in GDT for further use.
- * Freeing here means putting zeros to the descriptor on @segment_selector
- * position.
- * 
- * @param segment_selector index to GDT telling which descriptor to remove
- * @return  0 FAILED out of GDT range or @segment_selector == 0
- *          1 SUCCESS
- */
-extern int i386_free_gdt_entry (unsigned short segment_selector);
-
-/**
- * C callable function finds first empty descriptor in GDT.
- * Descriptor is considered empty if it is filled with zeros.
- *
- * If there is desire to find more than one empty descriptor at once
- * it is necessary to fill found descriptor before trying to get
- * another, otherwise same index is returned.
- *
- * @return  0 FAILED no empty descriptor
+ * @return  0 FAILED GDT is full
  *          <1;65535> segment_selector number as index to GDT
  */
-extern unsigned short i386_find_empty_gdt_entry (void);
+extern unsigned short i386_next_empty_gdt_entry (void);
 
 /**
  * Copies GDT entry at index @segment_selector to structure
