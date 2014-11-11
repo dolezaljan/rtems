@@ -19,7 +19,6 @@
 #include <libcpu/cpu.h>
 #include <bsp/irq.h>
 
-
 static rtems_raw_irq_connect_data* 	raw_irq_table;
 static rtems_raw_irq_connect_data  	default_raw_irq_entry;
 static interrupt_gate_descriptor   	default_idt_entry;
@@ -48,8 +47,8 @@ rtems_raw_irq_hdl get_hdl_from_vector(rtems_vector_offset index)
     /* Convert limit into number of entries */
     limit = (limit + 1) / sizeof(interrupt_gate_descriptor);
 
-    if(index >= limit) {
-        return 0;
+    if (index >= limit) {
+      return 0;
     }
 
     hdl = (idt_entry_tbl[index].low_offsets_bits |
@@ -239,11 +238,11 @@ int i386_raw_gdt_entry (unsigned short segment_selector_index, segment_descripto
 
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
 
-    if ( segment_selector_index >= (gdt_limit+1)/8 ) {
+    if (segment_selector_index >= (gdt_limit+1)/8) {
       /* index to GDT table out of bounds */
       return 0;
     }
-    if ( segment_selector_index == 0 ) {
+    if (segment_selector_index == 0) {
       /* index 0 is not usable */
       return 0;
     }
@@ -278,10 +277,10 @@ inline void i386_fill_segment_desc_base(unsigned base, segment_descriptors* sd)
 inline void i386_fill_segment_desc_limit(unsigned limit, segment_descriptors* sd)
 {
     sd->granularity = 0;
-    if ( limit > 65535 ) {
+    if (limit > 65535) {
       sd->granularity = 1;
       limit /= 4096;
-     }
+    }
     sd->limit_15_0  = limit & 0xffff;
     sd->limit_19_16 = (limit >> 16) & 0xf;
 }
@@ -320,7 +319,7 @@ unsigned short i386_next_empty_gdt_entry ()
 
     segment_selector_index += 1;
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
-    if ( segment_selector_index >= (gdt_limit+1)/8 ) {
+    if (segment_selector_index >= (gdt_limit+1)/8) {
       return 0;
     }
     return segment_selector_index;
@@ -333,7 +332,7 @@ unsigned short i386_cpy_gdt_entry(unsigned short segment_selector_index, segment
 
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
 
-    if ( segment_selector_index >= (gdt_limit+1)/8 ) {
+    if (segment_selector_index >= (gdt_limit+1)/8) {
       return 0;
     }
     
@@ -348,18 +347,17 @@ segment_descriptors* i386_get_gdt_entry(unsigned short segment_selector_index)
 
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
 
-    if ( segment_selector_index >= (gdt_limit+1)/8 ) {
+    if (segment_selector_index >= (gdt_limit+1)/8) {
       return 0;
     }
-    
     return &gdt_entry_tbl[segment_selector_index];
 }
 
 unsigned i386_limit_gdt_entry(segment_descriptors* gdt_entry)
 {
     unsigned lim = (gdt_entry->limit_15_0 + (gdt_entry->limit_19_16<<16));
-    if(gdt_entry->granularity){
-        return lim*4096+4095;
+    if (gdt_entry->granularity) {
+      return lim*4096+4095;
     }
     return lim;
 }

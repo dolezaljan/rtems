@@ -122,13 +122,15 @@ static uint16_t rml_data_dsc_index = 0;
 static __DP_TYPE prepareRMDescriptors (void *base32) {
     static void *prevBase = (void *)-1;
     /* check if descriptors were prepared already */
-    if(descsPrepared == __DP_YES && prevBase == base32)
+    if (descsPrepared == __DP_YES && prevBase == base32)
         return descsPrepared;
-    if(descsPrepared == __DP_FAIL)
+
+    if (descsPrepared == __DP_FAIL)
         return descsPrepared;
+
     /* create 'real mode like' segment descriptors, for switching to real mode */
     rml_code_dsc_index = i386_next_empty_gdt_entry();
-    if(rml_code_dsc_index==0)
+    if (rml_code_dsc_index == 0)
     {
         /* not enough space in GDT */
         descsPrepared = __DP_FAIL;
@@ -147,7 +149,7 @@ static __DP_TYPE prepareRMDescriptors (void *base32) {
     flags_desc.granularity         = 0x0;      /* bits 1  */
     i386_fill_segment_desc_base((unsigned)base32, &flags_desc);
     i386_fill_segment_desc_limit(rml_limit, &flags_desc);
-    if(i386_raw_gdt_entry(rml_code_dsc_index, &flags_desc)==0)
+    if (i386_raw_gdt_entry(rml_code_dsc_index, &flags_desc) == 0)
     {
         /* selector to GDT out of range */
         descsPrepared = __DP_FAIL;
@@ -155,7 +157,7 @@ static __DP_TYPE prepareRMDescriptors (void *base32) {
     }
 
     rml_data_dsc_index = i386_next_empty_gdt_entry();
-    if(rml_data_dsc_index==0)
+    if (rml_data_dsc_index == 0)
     {
         /* not enough space in GDT for both descriptors */
         descsPrepared = __DP_FAIL;
@@ -163,7 +165,7 @@ static __DP_TYPE prepareRMDescriptors (void *base32) {
     }
 
     flags_desc.type                = 0x2;      /* bits 4  */
-    if(i386_raw_gdt_entry(rml_data_dsc_index, &flags_desc)==0)
+    if (i386_raw_gdt_entry(rml_data_dsc_index, &flags_desc) == 0)
     {
         /* selector to GDT out of range */
         descsPrepared = __DP_FAIL;
@@ -204,7 +206,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         : "=a"(pagingon)
         : "i"(CR0_PAGING)
     );
-    if(pagingon)
+    if (pagingon)
         return 0;
 
     /* located under 1MB for real mode to be able to get/set values */
@@ -214,7 +216,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     rm_swtch_code_dst = (void *)((uint32_t)int_passed_regs_spot+sizeof(*int_passed_regs_spot));
     rm_stack_top = (void *)INT_STACK_TOP;
 
-    if(prepareRMDescriptors(int_passed_regs_spot)!=__DP_YES)
+    if (prepareRMDescriptors(int_passed_regs_spot) != __DP_YES)
 	return 0;
 
     pm_bkp_addr = &pm_bkp;
