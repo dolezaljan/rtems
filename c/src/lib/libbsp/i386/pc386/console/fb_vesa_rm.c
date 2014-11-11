@@ -233,12 +233,10 @@ static uint16_t findModeUsingCmdline(struct modeParams *modeList, uint8_t listLe
 static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLength) {
     union edid edid;
     uint8_t checksum, iterator;
-    uint8_t index, j, ind;
-    uint8_t text[14];
+    uint8_t index, j;
     struct modeParams EDIDmode;
     checksum = 0;
     iterator = 0;
-    ind = 0;
     EDIDmode.bpp = 0;
     if(VBEReadEDID(0, 0, &edid) != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
