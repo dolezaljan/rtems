@@ -45,7 +45,10 @@ extern "C" {
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  *          -1 error calling graphical bios
  */
-uint32_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t queriedVBEVersion);
+uint32_t VBEControllerInformation (
+    struct VBE_VbeInfoBlock *infoBlock,
+    uint16_t queriedVBEVersion
+);
 
 /**
  * Fills structure infoBlock with informations about selected mode in
@@ -56,7 +59,10 @@ uint32_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uint16_t q
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  *          -1 error calling graphical bios
  */
-uint32_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t modeNumber);
+uint32_t VBEModeInformation (
+    struct VBE_ModeInfoBlock *infoBlock,
+    uint16_t modeNumber
+);
 
 /**
  * Sets graphics mode selected. If mode has refreshRateCtrl bit set, than the
@@ -67,7 +73,10 @@ uint32_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t modeNu
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  *          -1 error calling graphical bios
  */
-uint32_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBlock);
+uint32_t VBESetMode (
+    uint16_t modeNumber,
+    struct VBE_CRTCInfoBlock *infoBlock
+);
 
 /**
  * Get currently set mode number.
@@ -76,7 +85,9 @@ uint32_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBlock);
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  *          -1 error calling graphical bios
  */
-uint32_t VBECurrentMode(uint16_t *modeNumber);
+uint32_t VBECurrentMode (
+    uint16_t *modeNumber
+);
 
 /**
  * Gets information about display data channel implemented in the
@@ -90,7 +101,11 @@ uint32_t VBECurrentMode(uint16_t *modeNumber);
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  *          -1 error calling graphical bios
  */
-uint32_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t *secondsToTransferEDIDBlock, uint8_t *DDCLevelSupported);
+uint32_t VBEReportDDCCapabilities (
+    uint16_t controllerUnitNumber,
+    uint8_t *secondsToTransferEDIDBlock,
+    uint8_t *DDCLevelSupported
+);
 
 /**
  * Reads selected EDID block from display attached to controller's interface.
@@ -101,7 +116,11 @@ uint32_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t *second
  * @return  register ax content as defined in VBE RETURN STATUS paragraph
  *          -1 error calling graphical bios
  */
-uint32_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNumber, union edid *buffer);
+uint32_t VBEReadEDID (
+    uint16_t controllerUnitNumber,
+    uint16_t EDIDBlockNumber,
+    union edid *buffer
+);
 
 #ifdef __cplusplus
 }
