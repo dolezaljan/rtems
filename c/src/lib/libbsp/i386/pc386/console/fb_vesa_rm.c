@@ -72,7 +72,7 @@ inline uint32_t VBEControllerInformation(struct VBE_VbeInfoBlock *infoBlock, uin
     {
         *infoBlock = *VBE_buffer;
     }
-    return (uint16_t)parret.reg_eax;
+    return (parret.reg_eax & 0xFFFF);
 }
 
 inline uint32_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t modeNumber){
@@ -90,7 +90,7 @@ inline uint32_t VBEModeInformation(struct VBE_ModeInfoBlock *infoBlock, uint16_t
     {
         *infoBlock = *VBE_buffer;
     }
-    return (uint16_t)parret.reg_eax;
+    return (parret.reg_eax & 0xFFFF);
 }
 
 inline uint32_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBlock){
@@ -106,7 +106,7 @@ inline uint32_t VBESetMode(uint16_t modeNumber, struct VBE_CRTCInfoBlock *infoBl
     parret.reg_es = seg;
     if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
-    return (uint16_t)parret.reg_eax;
+    return (parret.reg_eax & 0xFFFF);
 }
 
 inline uint32_t VBECurrentMode(uint16_t *modeNumber){
@@ -115,7 +115,7 @@ inline uint32_t VBECurrentMode(uint16_t *modeNumber){
     if(i386_real_interrupt_call(INTERRUPT_NO_VIDEO_SERVICES, &parret)==0)
 	return -1;
     *modeNumber = (uint16_t)parret.reg_ebx;
-    return (uint16_t)parret.reg_eax;
+    return (parret.reg_eax & 0xFFFF);
 }
 
 inline uint32_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t *secondsToTransferEDIDBlock, uint8_t *DDCLevelSupported){
@@ -129,7 +129,7 @@ inline uint32_t VBEReportDDCCapabilities(uint16_t controllerUnitNumber, uint8_t 
 	return -1;
     *secondsToTransferEDIDBlock = (uint8_t)parret.reg_ebx >> 8;
     *DDCLevelSupported = (uint8_t)parret.reg_ebx;
-    return (uint16_t)parret.reg_eax;
+    return (parret.reg_eax & 0xFFFF);
 }
 
 inline uint32_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNumber, union edid *buffer){
@@ -149,7 +149,7 @@ inline uint32_t VBEReadEDID(uint16_t controllerUnitNumber, uint16_t EDIDBlockNum
     {
         *buffer = *VBE_buffer;
     }
-    return (uint16_t)parret.reg_eax;
+    return (parret.reg_eax & 0xFFFF);
 }
 
 struct modeParams {
@@ -410,8 +410,14 @@ static uint16_t findModeUsingEDID(struct modeParams *modeList, uint8_t listLengt
 }
 
 void vesa_realmode_bootup_init(void){
+    uint32_t vbe_ret_val;
     struct VBE_VbeInfoBlock *vib = (struct VBE_VbeInfoBlock *)i386_get_primary_rm_buffer();
-    if(VBEControllerInformation(vib, 0x300) != (VBE_callSuccessful<<8 | VBE_functionSupported))
+    vbe_ret_val = VBEControllerInformation(vib, 0x300);
+    if(vbe_ret_val == -1) {
+        printk(FB_VESA_NAME " error calling real mode interrupt.\n");
+	return;
+    }
+    if(vbe_ret_val != (VBE_callSuccessful<<8 | VBE_functionSupported))
     {
         printk(FB_VESA_NAME " Function 00h (read VBE info block) not supported.\n");
     }
@@ -516,9 +522,9 @@ void vesa_realmode_bootup_init(void){
     }
 
     /* fill framebuffer structs with info about selected mode */
-    uint16_t ret_vbe = VBEModeInformation(mib, vbe_usedMode);
-    if((ret_vbe&0xff)!=VBE_functionSupported || (ret_vbe>>8)!=VBE_callSuccessful){
-        printk(FB_VESA_NAME " Cannot get mode info anymore. ax=0x%x\n", ret_vbe);
+    vbe_ret_val = VBEModeInformation(mib, vbe_usedMode);
+    if((vbe_ret_val&0xff)!=VBE_functionSupported || (vbe_ret_val>>8)!=VBE_callSuccessful){
+        printk(FB_VESA_NAME " Cannot get mode info anymore. ax=0x%x\n", vbe_ret_val);
     }
 
     fb_var.xres = mib->XResolution;
@@ -550,13 +556,13 @@ void vesa_realmode_bootup_init(void){
     }
 
     /* set selected mode */
-    ret_vbe = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(i386_get_primary_rm_buffer()));
-    if(ret_vbe>>8 == VBE_callFailed)
+    vbe_ret_val = VBESetMode(vbe_usedMode | VBE_linearFlatFrameBufMask,(struct VBE_CRTCInfoBlock *)(i386_get_primary_rm_buffer()));
+    if(vbe_ret_val>>8 == VBE_callFailed)
     {
         printk(FB_VESA_NAME " VBE: Requested mode is not available.");
     }
-    if((ret_vbe&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8)){
-        printk(FB_VESA_NAME " Call to function 2h (set VBE mode) failed. ax=0x%x\n", ret_vbe);
+    if((vbe_ret_val&0xff)!= (VBE_functionSupported | VBE_callSuccessful<<8)){
+        printk(FB_VESA_NAME " Call to function 2h (set VBE mode) failed. ax=0x%x\n", vbe_ret_val);
     }
 
     vib = (void *) 0;
