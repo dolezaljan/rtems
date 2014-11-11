@@ -284,15 +284,19 @@ extern int i386_raw_gdt_entry ( unsigned short segment_selector_index,
 /**
  * C callable function
  * fills @sd with provided @base in appropriate fields of @sd
- *
  * 
+ * @param base 32-bit address to be set as descriptor's base
+ * @param sd descriptor being filled with @base
  */
 extern void i386_fill_segment_desc_base(unsigned base, segment_descriptors* sd);
 
 /**
  * C callable function
  * fills @sd with provided @limit in appropriate fields of @sd
+ * also influences granularity bit
  *
+ * @param limit 32-bit value representing number of limit bytes
+ * @param sd descriptor being filled with @limit
  */
 extern void i386_fill_segment_desc_limit(unsigned limit, segment_descriptors* sd);
 
