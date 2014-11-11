@@ -235,6 +235,7 @@ int i386_raw_gdt_entry (unsigned short segment_selector_index, segment_descripto
     unsigned 			gdt_limit;
     unsigned short              tmp_segment = 0;
     segment_descriptors* 	gdt_entry_tbl;
+    unsigned int present;
 
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
 
@@ -248,7 +249,11 @@ int i386_raw_gdt_entry (unsigned short segment_selector_index, segment_descripto
     }
 
     /* put prepared descriptor into the GDT */
+    present = sd->present;
+    sd->present = 0;
     gdt_entry_tbl[segment_selector_index] = *sd;
+    sd->present = present;
+    gdt_entry_tbl[segment_selector_index].present = present;
     /*
      * Now, reload all segment registers so that the possible changes takes effect.
      */
