@@ -34,10 +34,12 @@ extern "C" {
 #endif /* __cplusplus */
 
 
-/* VESA Extended Display Identification Data (EDID) Standard Version 3, Revision Date: November 13, 1997 */
-/* VESA Enhanced Extended Display Identification Data (E-EDID) Standard Release A, Revision 2, September 25, 2006 */
-/* VESA Enhanced Extended Display Identification Data (E-EDID) Proposed Release A, March 27, 2007 */
-
+/*  VESA Extended Display Identification Data (EDID) Standard
+    Version 3, Revision Date: November 13, 1997 */
+/*  VESA Enhanced Extended Display Identification Data (E-EDID) Standard
+    Release A, Revision 2, September 25, 2006 */
+/*  VESA Enhanced Extended Display Identification Data (E-EDID) Proposed
+    Release A, March 27, 2007 */
 
 /**** structs and defines shared by both EDIDv1 and EDIDv2 ****/
 
@@ -93,7 +95,6 @@ struct ColorPointData {
     uint8_t ColorPointWhiteGamma;
 }__attribute__((__packed__));
 
-
 /**** structs and defines for EDIDv1 ****/
 
 /* Basic Display Parameters */
@@ -121,15 +122,16 @@ struct MonitorRangeLimits {
     uint8_t MinHorizontalInKHz;
     uint8_t MaxHorizontalInKHz;
     uint8_t MaxSupportedPixelClockIn10MHz;
-/* see VESA, Generalized Timing Formula Standard - GTF, Version 1.0, December 18, 1996 */
+/* see  VESA, Generalized Timing Formula Standard - GTF
+        Version 1.0, December 18, 1996 */
     uint8_t GTFStandard[8];
 }__attribute__((__packed__));
 
 #define EDID_DTT_MonitorName                0xFC
 
 #define EDID_DTT_AdditionalColorPointData   0xFB
-
-#define EDID_DTT_AdditionalSTI              0xFA /* Standard Timing Identification */
+/* Standard Timing Identification */
+#define EDID_DTT_AdditionalSTI              0xFA
 
 #define EDID_DTT_DisplayColorManagement     0xF9
 
@@ -534,7 +536,6 @@ struct DisplayTimingRangeLimits {
     uint8_t MaxFrameFieldRateInHzHigh;
     uint8_t MinLineRateInkHzHigh;
     uint8_t MaxLineRateInkHzHigh;
-    /* XXX low values are not correctly specified in used standard - document */
     uint8_t MaxLineRateInkHzLow             : 2; 
     uint8_t MinLineRateInkHzLow             : 2;
     uint8_t MaxFrameFieldRateInHzLow        : 2;
@@ -583,7 +584,9 @@ struct DetailedTimingRangeFormat27B {
     uint8_t HorizontalBorder;
     uint8_t VerticalBorder;
     uint8_t Flags_Set0                      : 1;
-    /* Next four bits specified for digital interfaces. Meaning for analog interfaces shall be found in the document mentioned above. */
+    /* Next four bits are specified for digital interfaces.
+    Meaning for analog interfaces shall be found
+    in the document mentioned above. */
     uint8_t Flags_LPPolarity                : 1;
     uint8_t Flags_FLMPolarity               : 1;
     uint8_t Flags_Reserved                  : 1;
@@ -625,7 +628,8 @@ struct TimingCodeFormat4B {
 #define EDID2_VIT_None                          0x0
 #define EDID2_VIT_Analog                        0x1
 #define EDID2_VIT_Analogwsampledpixelclock      0x2
-#define EDID2_VIT_TMDS                          0x3 /* Transition Minimized Differential Signaling */
+    /* Transition Minimized Differential Signaling */
+#define EDID2_VIT_TMDS                          0x3
 #define EDID2_VIT_IEEE1394_1995                 0x4
 #define EDID2_VIT_LVDS                          0x5
 #define EDID2_VIT_Parallel                      0x6
@@ -740,7 +744,6 @@ struct TimingCodeFormat4B {
 #define EDID2_GTFSI_stdCRTparams    0x1
 #define EDID2_GTFSI_defaultTBD      0x2
 #define EDID2_GTFSI_custom          0xF
-
 
 union edid {
     struct edid1 edid1;
