@@ -205,6 +205,9 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     void *rm_swtch_code_dst;
     void *rm_stack_top;
 
+    size_t cpLength;
+    void *cpBeg;
+
     volatile struct protected_mode_preserve_spots pm_bkp, *pm_bkp_addr;
     unsigned short unused_offset;
     
@@ -261,15 +264,11 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     );
     /* copy code for switch to real mode and executing interrupt to first MB of RAM */
     __asm__ volatile(   "\t"
-        "movl    $cp_end-cp_beg, %%ecx\n\t"
-        "cld\n\t"
-        "movl    $cp_beg, %%esi\n\t"
-        "movl    %0, %%edi\n\t"
-        "rep movsb\n\t"
-        :
-        : "rm"(rm_swtch_code_dst)
-        : "memory", "ecx", "esi", "edi"
+        "mov    $cp_end-cp_beg, %0\n\t"
+        "mov    $cp_beg, %1\n\t"
+        : "=rm"(cpLength), "=rm"(cpBeg)
     );
+    memcpy(rm_swtch_code_dst, cpBeg, cpLength);
     /* write interrupt number to be executed */
     uint16_t interrupt_number_off;
     uint8_t *interrupt_number_ptr;
