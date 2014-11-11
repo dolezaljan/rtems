@@ -34,7 +34,7 @@
 +--------------------------------------------------------------------------*/
 
 #include <rtems/asm.h>
-#include <bsp.h> /* contains sizes of GDT and IDT */
+#include <bsptblsizes.h> /* contains sizes of GDT and IDT */
 
 #ifndef GDT_SIZE
 #define GDT_SIZE (3)

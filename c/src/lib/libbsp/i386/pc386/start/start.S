@@ -41,7 +41,7 @@
 
 #include <rtems/asm.h>
 #include <rtems/score/cpu.h>
-#include <bsp.h>
+#include <bspopts.h>
 
 /*----------------------------------------------------------------------------+
 | Size of heap and stack:
