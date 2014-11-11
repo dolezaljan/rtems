@@ -32,7 +32,8 @@
 #define RM_ENTRY        "0x28"
 #define PM_ENTRY        "0x2C"
 
-struct interrupt_registers_preserve_spots { /* used for passing parameters, fetching results and preserving values */
+/* parameters, results, backup values accessible in real mode */
+struct rm_int_regs_bkp_param {
     struct interrupt_registers inoutregs;
     uint32_t pm_esp_bkp;
     uint16_t pm_ss_bkp;
@@ -54,7 +55,8 @@ struct interrupt_registers_preserve_spots { /* used for passing parameters, fetc
 #define RM_SS           "0x14"
 #define RM_SP           "0x16"
 #define RM_DS           "0x18"
-struct protected_mode_preserve_spots {
+/* backup values, pointers/parameters accessible in protected mode */
+struct pm_bkp_and_param {
     uint16_t idtr_lim_bkp;
     uint32_t idtr_base_bkp;
     uint16_t es_bkp;
@@ -199,7 +201,7 @@ inline uint16_t i386_get_primary_rm_buffer_size() {
 
 int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers *ir){
     uint32_t pagingon;
-    struct interrupt_registers_preserve_spots *int_passed_regs_spot;
+    struct rm_int_regs_bkp_param *int_passed_regs_spot;
     /* place where the code switching to realmode and executing
        interrupt is coppied */
     void *rm_swtch_code_dst;
@@ -208,7 +210,9 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     size_t cpLength;
     void *cpBeg;
 
-    volatile struct protected_mode_preserve_spots pm_bkp, *pm_bkp_addr;
+    /* values that can be passed from protected mode are stored in this struct
+       and they are passed later to the inline assembler executing interrupt */
+    volatile struct pm_bkp_and_param pm_bkp, *pm_bkp_addr;
     unsigned short unused_offset;
     
     __asm__ volatile(   "\t"
@@ -220,7 +224,8 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     if(pagingon)
         return 0;
 
-    int_passed_regs_spot = (struct interrupt_registers_preserve_spots *)
+    /* located under 1MB for real mode to be able to get/set values */
+    int_passed_regs_spot = (struct rm_int_regs_bkp_param *)
                                 (first_rm_buffer_spot+first_rm_buffer_size);
     /* position for real mode code reallocation to the first 1MB of RAM */
     rm_swtch_code_dst = (void *)((uint32_t)int_passed_regs_spot+sizeof(*int_passed_regs_spot));
