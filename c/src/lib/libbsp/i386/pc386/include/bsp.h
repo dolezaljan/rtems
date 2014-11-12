@@ -53,6 +53,7 @@ extern "C" {
 
 #include <bspopts.h>
 #include <bsp/default-initial-extension.h>
+#include <bsptblsizes.h>
 
 #include <rtems.h>
 #include <rtems/iosupp.h>
@@ -170,11 +171,8 @@ extern int rtems_3c509_driver_attach(struct rtems_bsdnet_ifconfig *config);
 /*-------------------------------------------------------------------------+
 | External Variables.
 +--------------------------------------------------------------------------*/
-#define IDT_SIZE 256
-#define GDT_SIZE 3
-
 extern interrupt_gate_descriptor Interrupt_descriptor_table[IDT_SIZE];
-extern segment_descriptors Global_descriptor_table   [GDT_SIZE];
+extern segment_descriptors _Global_descriptor_table   [GDT_SIZE];
 
 /*-------------------------------------------------------------------------+
 | Function Prototypes.
