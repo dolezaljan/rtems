@@ -284,7 +284,7 @@ extern int i386_raw_gdt_entry ( unsigned short segment_selector_index,
 /**
  * C callable function
  * fills @sd with provided @base in appropriate fields of @sd
- * 
+ *
  * @param base 32-bit address to be set as descriptor's base
  * @param sd descriptor being filled with @base
  */
@@ -298,13 +298,14 @@ extern void i386_fill_segment_desc_base(unsigned base, segment_descriptors* sd);
  * @param limit 32-bit value representing number of limit bytes
  * @param sd descriptor being filled with @limit
  */
-extern void i386_fill_segment_desc_limit(unsigned limit, segment_descriptors* sd);
+extern void i386_fill_segment_desc_limit(unsigned limit,
+                                        segment_descriptors* sd);
 
 /*
  * C callable function enabling to set up one raw interrupt handler
  */
 extern int i386_set_gdt_entry (unsigned short segment_selector, unsigned base,
-					     unsigned limit);
+                                unsigned limit);
 
 /**
  * C callable function returns next empty descriptor in GDT.
@@ -322,7 +323,8 @@ extern unsigned short i386_next_empty_gdt_entry (void);
  * @return  0 FAILED segment_selector out of GDT range
  *          <1;65535> retrieved segment_selector
  */
-extern unsigned short i386_cpy_gdt_entry(unsigned short segment_selector, segment_descriptors* strucToFill);
+extern unsigned short i386_cpy_gdt_entry(unsigned short segment_selector,
+                                        segment_descriptors* strucToFill);
 
 /**
  * Returns pointer to GDT table at index given by @segment_selector
@@ -341,7 +343,9 @@ extern segment_descriptors* i386_get_gdt_entry(unsigned short segment_selector);
 */
 extern inline void* i386_base_gdt_entry(segment_descriptors* gdt_entry)
 {
-    return (void*)(gdt_entry->base_address_15_0 + (gdt_entry->base_address_23_16<<16) + (gdt_entry->base_address_31_24<<24));
+    return (void*)(gdt_entry->base_address_15_0 +
+            (gdt_entry->base_address_23_16<<16) +
+            (gdt_entry->base_address_31_24<<24));
 }
 
 /**

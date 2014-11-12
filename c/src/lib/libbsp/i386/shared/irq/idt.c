@@ -47,8 +47,8 @@ rtems_raw_irq_hdl get_hdl_from_vector(rtems_vector_offset index)
     /* Convert limit into number of entries */
     limit = (limit + 1) / sizeof(interrupt_gate_descriptor);
 
-    if (index >= limit) {
-      return 0;
+    if(index >= limit) {
+        return 0;
     }
 
     hdl = (idt_entry_tbl[index].low_offsets_bits |
@@ -231,9 +231,9 @@ int i386_get_idt_config (rtems_raw_irq_global_settings** config)
 
 int i386_raw_gdt_entry (unsigned short segment_selector_index, segment_descriptors* sd)
 {
-    unsigned 			gdt_limit;
+    unsigned                    gdt_limit;
     unsigned short              tmp_segment = 0;
-    segment_descriptors* 	gdt_entry_tbl;
+    segment_descriptors*        gdt_entry_tbl;
     unsigned int present;
 
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
@@ -289,7 +289,7 @@ inline void i386_fill_segment_desc_limit(unsigned limit, segment_descriptors* sd
  * Caution this function assumes the GDTR has been already set.
  */
 int i386_set_gdt_entry (unsigned short segment_selector_index, unsigned base,
-			unsigned limit)
+                        unsigned limit)
 {
     segment_descriptors         gdt_entry;
     memset(&gdt_entry, 0, sizeof(gdt_entry));
@@ -299,10 +299,10 @@ int i386_set_gdt_entry (unsigned short segment_selector_index, unsigned base,
     /*
      * set up descriptor type (this may well becomes a parameter if needed)
      */
-    gdt_entry.type 		= 2;    /* Data R/W */
-    gdt_entry.descriptor_type 	= 1;    /* Code or Data */
+    gdt_entry.type              = 2;    /* Data R/W */
+    gdt_entry.descriptor_type   = 1;    /* Code or Data */
     gdt_entry.privilege         = 0;    /* ring 0 */
-    gdt_entry.present 		= 1;    /* not present */
+    gdt_entry.present           = 1;    /* not present */
 
     /*
      * Now, reload all segment registers so the limit takes effect.
@@ -312,8 +312,8 @@ int i386_set_gdt_entry (unsigned short segment_selector_index, unsigned base,
 
 unsigned short i386_next_empty_gdt_entry ()
 {
-    unsigned 			gdt_limit;
-    segment_descriptors* 	gdt_entry_tbl;
+    unsigned                    gdt_limit;
+    segment_descriptors*        gdt_entry_tbl;
     /* initial amount of filled descriptors */
     static unsigned short       segment_selector_index = 2;
 
@@ -327,15 +327,15 @@ unsigned short i386_next_empty_gdt_entry ()
 
 unsigned short i386_cpy_gdt_entry(unsigned short segment_selector_index, segment_descriptors* strucToFill)
 {
-    unsigned 			gdt_limit;
-    segment_descriptors* 	gdt_entry_tbl;
+    unsigned                    gdt_limit;
+    segment_descriptors*        gdt_entry_tbl;
 
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
 
     if (segment_selector_index >= (gdt_limit+1)/8) {
       return 0;
     }
-    
+
     *strucToFill = gdt_entry_tbl[segment_selector_index];
     return segment_selector_index;
 }
@@ -343,7 +343,7 @@ unsigned short i386_cpy_gdt_entry(unsigned short segment_selector_index, segment
 segment_descriptors* i386_get_gdt_entry(unsigned short segment_selector_index)
 {
     unsigned                    gdt_limit;
-    segment_descriptors* 	gdt_entry_tbl;
+    segment_descriptors*        gdt_entry_tbl;
 
     i386_get_info_from_GDTR (&gdt_entry_tbl, &gdt_limit);
 

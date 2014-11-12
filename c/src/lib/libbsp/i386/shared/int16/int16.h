@@ -7,7 +7,10 @@
  */
 
 /*
- *
+ *  Interface allows calling given interrupt number with content of the
+ *  registers defined. For passing or receiving higher amounts of the data
+ *  there is a buffer accessible from real mode available. Real mode pointer
+ *  to this buffer is passed to the interrupt in the registers.
  *
  * Copyright (C) 2014  Jan Doležal (dolezj21@fel.cvut.cz)
  *                     CTU in Prague.
@@ -72,7 +75,7 @@ extern uint16_t i386_get_primary_rm_buffer_size(void);
  * This function allows calling interrupts in real mode and to set processor
  * registers as desired before interrupt call is made and to retrieve the
  * registers content after call was made.
- * 
+ *
  * @param interruptNumber interrupt number to be called
  * @param ir pointer to structure containing registers to be passed to interrupt
  *        and to retrieve register content after call was made.

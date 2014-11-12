@@ -159,9 +159,8 @@ PREINSTALL_FILES += $(PROJECT_INCLUDE)/edid.h
 $(PROJECT_INCLUDE)/fb_vesa.h: include/fb_vesa.h $(PROJECT_INCLUDE)/$(dirstamp)
 	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/fb_vesa.h
 PREINSTALL_FILES += $(PROJECT_INCLUDE)/fb_vesa.h
-
-else
 endif
+
 $(PROJECT_INCLUDE)/pcibios.h: ../../i386/shared/pci/pcibios.h $(PROJECT_INCLUDE)/$(dirstamp)
 	$(INSTALL_DATA) $< $(PROJECT_INCLUDE)/pcibios.h
 PREINSTALL_FILES += $(PROJECT_INCLUDE)/pcibios.h

@@ -1,6 +1,6 @@
 /*
  *  Realmode interrupt call implementation.
- *  
+ *
  *
  *  Copyright (c) 2014 - CTU in Prague
  *                       Jan Doležal ( dolezj21@fel.cvut.cz )
@@ -88,8 +88,8 @@ static void *first_rm_buffer_spot = (void *)REAL_MODE_SPOT;
 static uint16_t first_rm_buffer_size = DEFAULT_BUFFER_SIZE;
 
 /* real mode stack */
-#define STACK_SIZE			8192
-#define INT_STACK_TOP 			REAL_MODE_SPOT
+#define STACK_SIZE                      8192
+#define INT_STACK_TOP                   REAL_MODE_SPOT
 
 /******************************
  * STACK            *         *
@@ -101,10 +101,10 @@ static uint16_t first_rm_buffer_size = DEFAULT_BUFFER_SIZE;
  * INT_FNC          *~149 B   *
  ******************************/
 
-#define __DP_TYPE 	uint8_t
-#define __DP_YES 	((__DP_TYPE)1)
-#define __DP_NO		((__DP_TYPE)-1)
-#define __DP_FAIL	((__DP_TYPE)0)
+#define __DP_TYPE       uint8_t
+#define __DP_YES        ((__DP_TYPE)1)
+#define __DP_NO         ((__DP_TYPE)-1)
+#define __DP_FAIL       ((__DP_TYPE)0)
 static __DP_TYPE descsPrepared = __DP_NO;
 
 /* rml - real mode alike */
@@ -136,7 +136,7 @@ static __DP_TYPE prepareRMDescriptors (void *base32) {
         descsPrepared = __DP_FAIL;
         return descsPrepared;
     }
-    
+
     segment_descriptors flags_desc;
     memset(&flags_desc, 0, sizeof(flags_desc));
     flags_desc.type                = 0xE;      /* bits 4  */
@@ -199,7 +199,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
        and they are passed later to the inline assembler executing interrupt */
     volatile struct pm_bkp_and_param pm_bkp, *pm_bkp_addr;
     unsigned short unused_offset;
-    
+
     __asm__ volatile(   "\t"
         "movl    %%cr0, %%eax\n\t"
         "andl    %1, %%eax\n"
@@ -217,7 +217,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
     rm_stack_top = (void *)INT_STACK_TOP;
 
     if (prepareRMDescriptors(int_passed_regs_spot) != __DP_YES)
-	return 0;
+        return 0;
 
     pm_bkp_addr = &pm_bkp;
     i386_Physical_to_real_mode_ptr(
@@ -387,7 +387,7 @@ int i386_real_interrupt_call(uint8_t interruptNumber, struct interrupt_registers
         /* restore IDTR */
         "addl    $"BKP_IDTR_LIM", %%esi\n\t"
         "lidt    (%%esi)\n\t"
-        : 
+        :
         : [regs_spot]"m"(int_passed_regs_spot), [pm_bkp]"m"(pm_bkp_addr), [cr0_prot_ena]"i"(CR0_PROTECTION_ENABLE), [cr0_prot_dis]"i"(~CR0_PROTECTION_ENABLE)
         : "memory", "ebx", "ecx", "edx", "esi", "edi"
     );
