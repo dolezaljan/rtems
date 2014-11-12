@@ -206,7 +206,7 @@ SYM (zero_bss):
 	call _IBMPC_initVideo
 
 #ifdef USE_VBE_RM
-SYM(vesa_rm): call    vesa_realmode_bootup_init
+        call    vesa_realmode_bootup_init
 #endif
 
 /*---------------------------------------------------------------------+
