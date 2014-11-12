@@ -327,6 +327,69 @@ SYM (i386_Physical_to_logical):
         movl    ecx,eax                /* eax = ecx */
         ret
 
+/*
+ *  void *i386_Real_mode_ptr_to_physical(
+ *     void     *ptr
+ *  );
+ *
+ *  Returns thirty-two bit physical address for segment:offset realmode pointer.
+ */
+
+.set RM_PTR_ARG, 4
+
+       PUBLIC (i386_Real_mode_ptr_to_physical)
+
+SYM (i386_Real_mode_ptr_to_physical):
+        movl    RM_PTR_ARG(esp),eax
+        xorl    ecx, ecx
+        movw    ax, cx
+        shrl    $12, eax
+        andl    $0xFFFF0, eax
+        addl    ecx, eax
+        ret
+
+/*
+ *  int i386_Physical_to_real_mode_ptr(
+ *     void     *address,
+ *     unsigned short *segment,
+ *     unsigned short *offset
+ *  );
+ *
+ *  Fills segment:offest realmode pointer counted from thirty-two bit physical
+ *  address.
+ *  Returns 0 if unconvertible, 1 if successfuly converted.
+ */
+
+.set RM_PTR_SEG_ARG, 8
+.set RM_PTR_OFF_ARG, 12
+
+       PUBLIC (i386_Physical_to_real_mode_ptr)
+
+SYM (i386_Physical_to_real_mode_ptr):
+        movl    RM_PTR_ARG(esp),eax
+        cmpl    $0x10FFF0, eax
+        js      cvtbl
+        movl    $0, eax
+        ret
+cvtbl:  cmpl    $0x100000, eax
+        js      lowmem
+        subl    $0xFFFF0, eax
+        movl    RM_PTR_OFF_ARG(esp), ecx
+        movw    ax, (ecx)
+        movl    RM_PTR_SEG_ARG(esp), ecx
+        movw    $0xFFFF, (ecx)
+        movl    $1, eax
+        ret
+lowmem: movl    eax, edx
+        and     $0xF, ax
+        movl    RM_PTR_OFF_ARG(esp), ecx
+        movw    ax, (ecx)
+        shrl    $4, edx
+        movl    RM_PTR_SEG_ARG(esp), ecx
+        movw    dx, (ecx)
+        movl    $1, eax
+        ret
+
 END_CODE
 
 END
