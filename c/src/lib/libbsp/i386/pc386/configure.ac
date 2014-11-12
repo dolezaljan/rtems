@@ -97,7 +97,7 @@ if test "${USE_VBE_RM}" = "1" ; then
 fi
 RTEMS_BSPOPTS_SET([NUM_APP_DRV_GDT_DESCRIPTORS],[*],[0])
 RTEMS_BSPOPTS_HELP([NUM_APP_DRV_GDT_DESCRIPTORS],
-[Defines how many descriptors in GDT will be allocated for application or
+[Defines how many descriptors in GDT may be allocated for application or
  driver usage.])
 
 if test X${CLOCK_DRIVER_USE_TSC} = X1 -a X${CLOCK_DRIVER_USE_8254} = X1 ; then
